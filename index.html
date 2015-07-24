@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <!-- Basic Page Needs
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta charset="utf-8">
+  <title>Baker Street</title>
+  <meta name="description" content="">
+  <meta name="author" content="datawire">
+
+  <!-- Mobile Specific Metas
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/skeleton.css">
+  <link rel="stylesheet" href="css/custom.css">
+
+  <!-- Favicon
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="icon" type="image/png" href="images/favicon.png">
+
+</head>
+<body>
+
+  <!-- Primary Page Layout
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <div class="container">
+    <div class="row">
+      <section class="header">
+	<img src="images/bakerstreet.png">
+	<h4 class="title">Easy service discovery and routing for microservices</h4>
+      <a class="button button-primary" href="docs/quickstart.html#setup">Install</a>
+      </section>
+    </div>
+
+    <div class="row">
+      <div class="eleven columns" style="margin-top: 5%">
+        <h4>Introduction</h4>
+
+        <p>In a microservice architecture, a microservice needs a way
+          to locate other microservices. Once located, a microservice
+          needs a way to send data between the microservices.</p>
+
+	<p>Baker Street provides an integrated solution for:
+	  <ul>
+	    <li>Service discovery: locating an available instance of a
+	      microservice</li>
+	    <li>Load balancing: automatically distributing requests to
+	      a particular type of microservice against all available
+	      instances of that microservice</li>
+	    <li>Upgrades and testing: automatically add/remove new
+	      versions of a microservice to the pool, which lets you
+	      transparently test and upgrade a version without rolling
+	      it out all at once.</li>
+	  </ul>
+
+	  <h4>What else you could use?</h4>
+
+	  <p>There are a number of
+	    different <a href="http://jasonwilder.com/blog/2014/02/04/service-discovery-in-the-cloud/">service
+	      discovery</a> frameworks available. Why Baker Street?
+
+	    <ul>
+	      <li>Baker Street installs in just a few minutes. Try it!</li>
+	      <li>None of these frameworks, with the exception
+		of <a href="http://nerds.airbnb.com/smartstack-service-discovery-cloud/">SmartStack</a>
+		provide integrated routing. Yes, you could write your
+		own. But why bother?</li>
+	      <li>Most of the frameworks focus on consistency, not
+		availability. But what you really care about is
+		availability. When a microservice dies, you don't need
+		or want your service discovery to come to consensus
+		about whether or not it's dead -- you want to just
+		propagate this information ASAP.</li>
+	    </ul>
+	  </p>
+
+	    <h4>More</h4>
+
+	     <p>Detailed documentation <a href="docs/index.html">here</a>, or just
+	      jump to the <a href="docs/quickstart.html#setup">install
+		documentation</a>.</p>
+
+	    
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+    Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-57322503-2', 'auto');
+    ga('send', 'pageview');
+
+    </script>
+
+<!-- End Document
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+</body>
+</html>
