@@ -1,7 +1,9 @@
 from distutils.core import setup
 
+__version__ = '0.4'
+
 setup(name='bakerstreet',
-      version='0.4',
+      version=__version__,
       description='Service discovery for microservices',
       author='datawire.io',
       author_email='hello@datawire.io',

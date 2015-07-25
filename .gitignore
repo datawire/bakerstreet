@@ -1,0 +1,7 @@
+*.pyc
+*.*~
+*~
+*.class
+build
+tags
+dist
