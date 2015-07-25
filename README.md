@@ -26,16 +26,16 @@ You must have the following on every system containing a Baker Street component:
 
 We expect it to take approximately 15 minutes to install a working local development environment with all three components.
 
-Directions for installing Baker Street locally can be found [http://bakerstreet.io/docs/quickstart.html#setup](here).
+Directions for installing Baker Street locally can be found [here](http://bakerstreet.io/docs/quickstart.html#setup).
 
 ##Next Steps
 
-Additional information about Baker Street's design and architecture can be found [http://bakerstreet.io/docs/architecture.html](here).
+Additional information about Baker Street's design and architecture can be found [here](http://bakerstreet.io/docs/architecture.html).
 
-Baker Street components all support a variety of options available via configuration files. For example, each component supports a range of logging levels that can be independently toggled within these configuration files. Information on how to configure each component can be found [http://bakerstreet.io/docs/reference.html](here)
+Baker Street components all support a variety of options available via configuration files. For example, each component supports a range of logging levels that can be independently toggled within these configuration files. Information on how to configure each component can be found [here](http://bakerstreet.io/docs/reference.html).
 
 ##Additional Information
 
-For additional information, visit the Baker Street website at [http://www.bakerstreet.io].
+For additional information, visit the Baker Street website at [http://www.bakerstreet.io](http://www.bakerstreet.io).
 
-Please post any questions about Baker Street on [http://www.stackoverflow.com](Stack Overflow) using the tag bakerstreet.
+Please post any questions about Baker Street on [Stack Overflow](http://www.stackoverflow.com) using the tag bakerstreet.
