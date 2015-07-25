@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+# Copyright (C) k736, inc. All Rights Reserved.
+# Unauthorized copying or redistribution of this file is strictly prohibited.
+
+from roy import build, deps
+from pkg_common import Common
+
+class Sherlock(Common):
+
+    def __init__(self):
+        self.name = "datawire-sherlock"
+        self.build_deps = []
+        self.deps = [deps.datawire, deps.haproxy, deps.policycoreutils]
+        self.arch = "all"
+        self.conf = ["/etc/datawire/sherlock.conf"]
+        self.iteration = 2
+        self.postinstall = """
+/usr/sbin/setsebool -P haproxy_connect_any on || true
+/usr/bin/chcon --type haproxy_var_run_t /opt/datawire/run || true
+"""
+
+    def build(self, distro):
+        result = self.install_prep()
+        result += self.install_script("sherlock")
+        result += self.install_config(self.name, distro.image)
+        return result
+
+build(Sherlock())

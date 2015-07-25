@@ -1,0 +1,184 @@
+#!/usr/bin/env python -u
+
+# Copyright (C) k736, inc. All Rights Reserved.
+# Unauthorized copying or redistribution of this file is strictly prohibited.
+
+"""
+Sherlock
+
+- Subscribe to the directory
+- Track routes that target HTTP
+- Keep an HAProxy config file updated with tracked routes
+"""
+
+import os, logging
+from argparse import ArgumentParser
+from urlparse import urlparse
+from time import time, ctime
+from subprocess import Popen
+
+from proton.reactor import Reactor
+from datawire import Configuration, Processor, Receiver
+
+logging.basicConfig(datefmt="%Y-%m-%d %H:%M:%S",
+                    format="%(asctime)s sherlock %(name)s %(levelname)s %(message)s")
+log = logging.getLogger()
+
+confBase = """
+global
+    daemon
+    maxconn 256
+
+defaults
+    mode http
+    timeout connect 5000ms
+    timeout client 50000ms
+    timeout server 50000ms
+
+frontend http-in
+    bind *:8000""".split("\n")
+
+
+class Sherlock(object):
+
+    def __init__(self, args):
+        self.receiver = Receiver(args.directory, Processor(self))
+        self.routeMap = {}  # address -> [ url, url, ... ], policy
+
+        self.debounceInterval = args.debounce
+        self.dirDebounceInterval = args.dir_debounce
+
+        self.updated = True
+        self.lastChangeTime = 0
+        self.currentDebounce = self.debounceInterval
+        self.lastConfig = None
+
+        self.cfgFilename = os.path.join(args.rundir, "haproxy.conf")
+        self.pidFilename = os.path.join(args.rundir, "haproxy.pid")
+        self.proxyCommand = "%s -f %s -p %s" % (args.proxy, self.cfgFilename, self.pidFilename)
+
+    def on_reactor_init(self, event):
+        self.receiver.start(event.reactor)
+        event.reactor.schedule(self.currentDebounce, self)
+
+    def on_link_remote_open(self, event):
+        log.info("Detected new connection to the directory at %s", ctime())
+        self.currentDebounce = self.dirDebounceInterval
+
+    def on_message(self, event):
+        if event.message.subject != "routes":
+            return
+        msg = event.message
+        address = msg.body[0]
+        routes = msg.body[1]
+        policy = msg.properties["policy"]
+        self.routeMap[address] = [target
+                                  for (host, port, target), owner in routes
+                                  if target and target.upper().startswith("HTTP")], \
+                                 policy
+        self.updated = True
+        self.lastChangeTime = time()
+        event.reactor.schedule(self.currentDebounce, self)
+
+    def on_timer_task(self, event):
+        if not self.updated:
+            return
+
+        elapsed = time() - self.lastChangeTime
+        if elapsed < self.currentDebounce:
+            event.reactor.schedule(self.currentDebounce - elapsed, self)
+            return
+
+        self.updated = False
+        self.currentDebounce = self.debounceInterval
+        self.pokeHAProxy()
+
+    def render(self):
+        head = []
+        frontends = []
+        backends = []
+        for address, (routes, policy) in sorted(self.routeMap.items()):
+            head.append("# %s -> (%s) %s" % (address, policy, "; ".join(sorted(routes))))
+            urlObj = urlparse(address)
+            backend = "BE" + urlObj.path.replace("/", "_")
+            pred = "IS" + urlObj.path.replace("/", "_")
+            frontends.append("\n    acl %s path_beg %s" % (pred, urlObj.path))
+            frontends.append("    use_backend %s if %s" % (backend, pred))
+            backends.append("\nbackend %s" % backend)
+            for url in sorted(routes):
+                urlObj = urlparse(url)
+                host = urlObj.hostname
+                port = urlObj.port or 80
+                name = "%s_%s" % (host, port)
+                backends.append("    server %s %s:%s maxconn 32" % (name, host, port))
+        return "\n".join(head + confBase + frontends + backends)
+
+    def pokeHAProxy(self):
+        cfgData = self.render()
+        if cfgData != self.lastConfig:
+            self.lastConfig = cfgData
+            with open(self.cfgFilename, "wb") as outf:
+                outf.write("# Last update %s\n" % ctime())
+                outf.write(cfgData)
+                outf.write("\n")
+            log.info("Wrote new configuration file to %s at %s", self.cfgFilename, ctime())
+            command = self.proxyCommand
+            try:
+                command += " -sf %s" % open(self.pidFilename).read()
+            except IOError:
+                pass
+            try:
+                Popen(command.split())
+                log.info("Launched %s", command)
+            except OSError as exc:
+                log.error("Failed to launch %r", command)
+                log.error(" (%s)", exc)
+        else:
+            log.info("Duplicate output suppressed at %s", ctime())
+
+default_config = """
+[DEFAULT]
+logging: WARNING
+
+[Datawire]
+directory_host:
+
+[Sherlock]
+proxy: /usr/sbin/haproxy
+rundir: .
+debounce: 2  ; seconds
+dir_debounce: 2  ; seconds
+"""
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("-c", "--config", help="read from additional config file", metavar="FILE")
+    args = parser.parse_args()
+
+    loader = Configuration(default_config)
+    loader.add_file_relative("sherlock.conf")
+    if args.config:
+        loader.add_file_absolute(args.config)
+
+    config = loader.parse()
+    args.directory_host = config.get("Datawire", "directory_host")
+    args.proxy = config.get("Sherlock", "proxy")
+    args.rundir = config.get("Sherlock", "rundir")
+    args.debounce = config.getint("Sherlock", "debounce")
+    args.dir_debounce = config.getint("Sherlock", "dir_debounce")
+    args.logging = config.get("Sherlock", "logging")
+
+    log.setLevel(getattr(logging, args.logging.upper()))
+    if not loader.parsed_filenames:
+        log.warning("No configuration files found. Falling back to defaults.")
+    if not args.directory_host:
+        log.warning("No directory_host configured. Falling back to localhost.")
+        args.directory_host = "localhost"
+
+    args.directory = "//%s/directory" % args.directory_host
+
+    Reactor(Sherlock(args)).run()
+
+
+if __name__ == "__main__":
+    main()

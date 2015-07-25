@@ -1,0 +1,132 @@
+#!/usr/bin/env python -u
+
+# Copyright (C) k736, inc. All Rights Reserved.
+# Unauthorized copying or redistribution of this file is strictly prohibited.
+
+"""
+Watson
+
+- Periodically GET a URL
+- Tether to the directory if GET was successful
+"""
+
+import urllib2, logging
+from argparse import ArgumentParser
+from urlparse import urlparse
+
+from proton.reactor import Reactor
+
+from datawire import Configuration, Tether
+
+logging.basicConfig(datefmt="%Y-%m-%d %H:%M:%S",
+                    format="%(asctime)s watson %(name)s %(levelname)s %(message)s")
+log = logging.getLogger()
+
+class LivenessByHTTPGet(object):
+
+    def __init__(self, url):
+        self.url = url
+        self.okay = set([200])
+
+    def __call__(self):
+        try:
+            res = urllib2.urlopen(self.url)
+            if res.getcode() in self.okay:
+                return True
+        except urllib2.URLError:
+            pass
+        return False
+
+
+class Watson(object):
+
+    def __init__(self, args, testLiveness):
+        self.tetherArgs = args.directory, args.address, args.service_url
+        self.tether = None
+        self.testingPeriod = args.period
+        self.testLiveness = testLiveness
+        self.justStarted = True
+        self.url = args.service_url
+
+    def on_reactor_init(self, event):
+        event.reactor.schedule(0, self)
+
+    def on_timer_task(self, event):
+        if self.testLiveness():
+            # Alive
+            if self.tether is None:
+                # Just came to life
+                log.info("DEAD -> LIVE (%s)", self.url)
+                self.tether = Tether(*self.tetherArgs)
+                self.tether.start(event.reactor)
+        else:
+            # Dead
+            if self.tether is not None:
+                # Just died
+                log.info("LIVE -> DEAD (%s)", self.url)
+                self.tether.stop(event.reactor)
+                self.tether = None
+                log.debug(" liveness check at %s for service %s", self.testLiveness.url, self.url)
+            elif self.justStarted:
+                log.info("START -> DEAD (%s)", self.url)
+                self.justStarted = False
+                log.debug("liveness check at %s for service %s", self.testLiveness.url, self.url)
+        event.reactor.schedule(self.testingPeriod, self)
+
+default_config = """
+[DEFAULT]
+logging: WARNING
+
+[Datawire]
+directory_host:
+
+[Watson]
+period: 3
+"""
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("-c", "--config", help="read from additional config file", metavar="FILE")
+    args = parser.parse_args()
+
+    loader = Configuration(default_config)
+    loader.add_file_relative("watson.conf")
+    if args.config:
+        loader.add_file_absolute(args.config)
+
+    config = loader.parse()
+    if not loader.parsed_filenames:
+        parser.exit(1, "No configuration found.\n")
+
+    args.directory_host = config.get("Datawire", "directory_host")
+    args.period = config.getint("Watson", "period")
+    args.logging = config.get("Watson", "logging")
+
+    try:
+        args.service_url = config.get("Watson", "service_url")
+        args.liveness_url = config.get("Watson", "liveness_url")
+    except Exception:
+        parser.exit(1, "Configuration error. Please ensure service_url and liveness_url are configured.\n")
+
+    url_info = urlparse(args.service_url)
+    service_name = url_info.path
+    if service_name.startswith("/"):
+        service_name = service_name[1:]
+    if not service_name:
+        parser.exit(1, "Configuration error: service_url must have a path component (http://host:port/path).\n")
+
+    log.setLevel(getattr(logging, args.logging.upper()))
+    if not args.directory_host:
+        log.warning("No directory_host configured. Falling back to localhost.")
+        args.directory_host = "localhost"
+
+    args.directory = "//%s/directory" % args.directory_host
+    args.address = "//%s/%s" % (args.directory_host, service_name)
+
+    checker = LivenessByHTTPGet(args.liveness_url)
+
+    Reactor(Watson(args, checker)).run()
+
+
+if __name__ == "__main__":
+    main()

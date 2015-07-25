@@ -1,0 +1,12 @@
+[Unit]
+Description=Datawire Baker Sherlock
+ConditionPathExists=/etc/datawire/sherlock.conf
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/sherlock -c /etc/datawire/sherlock.conf
+Restart=always
+RestartPreventExitStatus=78
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Datawire Baker Watson
+ConditionPathExists=/etc/datawire/watson.conf
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/watson -c /etc/datawire/watson.conf
+Restart=always
+RestartPreventExitStatus=78
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,7 @@
+[Watson]
+; service_name must uniquely identify your service
+service_url: http://hostname:port/service_name
+liveness_url: %(service_url)s/liveness_check
+period: 3  ; seconds between liveness checks
+; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
+;logging: WARNING

@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+# Copyright (C) k736, inc. All Rights Reserved.
+# Unauthorized copying or redistribution of this file is strictly prohibited.
+
+from roy import build, deps
+from pkg_common import Common
+
+class Watson(Common):
+
+    def __init__(self):
+        self.name = "datawire-watson"
+        self.build_deps = []
+        self.deps = [deps.datawire]
+        self.arch = "all"
+
+    def build(self, distro):
+        result = self.install_prep()
+        result += self.install_script("watson")
+        result += self.install_config(self.name, distro.image)
+        return result
+
+build(Watson())
