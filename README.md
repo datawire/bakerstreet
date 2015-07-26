@@ -4,9 +4,10 @@ Baker Street is a service discovery and routing system designed for microservice
 
 Baker Street simplifies scaling, testing, and upgrading microservices by:
 
-* focusing on high availability and eventual consistency of the overall system
-* enabling canary testing for staged testing and deployment of service upgrades
-* supporting language, framework, and tooling independence for developers
+* automatically splitting traffic among all healthy services sharing the same name in the system
+* making load balancing more efficient and robust by using local load balancers
+* removing problematic instances from the rotation more quickly by using local health checkers
+* enabling canary testing for staged testing and deployment of service upgrades.
 
 Baker Street consists of three components:
 
