@@ -1,6 +1,6 @@
 #Baker Street
 
-Baker Street is a service discovery and routing system designed for microservice architectures. 
+Baker Street is a service discovery and routing system designed for microservice architectures.
 
 Baker Street simplifies scaling, testing, and upgrading microservices by:
 
@@ -16,11 +16,7 @@ Baker Street consists of three components:
 
 ##Baker Street System Requirements
 
-You must have the following on every system containing a Baker Street component:
-
-1. Any Enterprise Linux 7 or Ubuntu 14.04 LTS
-2. JDK 1.8
-3. Maven 3 or higher
+Baker Street works on any flavor of Enterprise Linux 7 or on Ubuntu 14.04 LTS. It has no other requirements, but since it must be co-located with your service, your service must also run on one of these platforms if you wish to use it with Baker Street.
 
 ##Installing Baker Street
 
