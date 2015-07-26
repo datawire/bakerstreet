@@ -16,7 +16,12 @@ Baker Street consists of three components:
 
 ##Baker Street System Requirements
 
-Baker Street works on any flavor of Enterprise Linux 7 or on Ubuntu 14.04 LTS. It has no other requirements, but since it must be co-located with your service, your service must also run on one of these platforms if you wish to use it with Baker Street.
+Baker Street works on any flavor of Enterprise Linux 7 or on Ubuntu 14.04 LTS. It has no other requirements, but since it must be co-located with your service, your service must also run on one of these platforms if you wish to use it with Baker Street. 
+
+If you wish to test your installation using a simple sample service as outlined in the Baker Street documentation, you will also need the following:
+
+* JDK 1.8
+* maven 3 or higher
 
 ##Installing Baker Street
 
