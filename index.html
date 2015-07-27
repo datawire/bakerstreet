@@ -48,7 +48,7 @@
 	<p>Baker Street simplifies scaling, testing, and upgrading microservices by:</P>
 
 	<ul>
-	  <li>utomatically splitting traffic among all healthy
+	  <li>automatically splitting traffic among all healthy
 	    services sharing the same name in the system</li>
 	  <li>making load balancing more efficient and robust by using
 	    local load balancers</li>
@@ -86,6 +86,10 @@
 		of <a href="http://nerds.airbnb.com/smartstack-service-discovery-cloud/">SmartStack</a>,
 		provide integrated routing. Yes, you could write your
 		own. But why bother?</li>
+	      <li>You could use SmartStack, but it requires you to set
+		up Zookeeper, and also requires you to really know
+		HAProxy-fu. We abstract this away.</li>
+		
 	      <li>Most of the frameworks focus on consistency, not
 		availability. But what you really care about is
 		availability. When a microservice dies, you don't need
