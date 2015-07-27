@@ -5,8 +5,8 @@
   <!-- Basic Page Needs
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
   <meta charset="utf-8">
-  <title>Baker Street</title>
-  <meta name="description" content="">
+  <title>Baker Street, service discovery and routing for microservices</title>
+  <meta name="description" content="Baker Street is an easy service discovery and routing framework for microservices">
   <meta name="author" content="datawire">
 
   <!-- Mobile Specific Metas
@@ -45,23 +45,35 @@
       <div class="eleven columns" style="margin-top: 5%">
         <h4>Introduction</h4>
 
-        <p>In a microservice architecture, a microservice needs a way
-          to locate other microservices. Once located, a microservice
-          needs a way to send data between the microservices.</p>
+	<p>Baker Street simplifies scaling, testing, and upgrading microservices by:</P>
 
-	<p>Baker Street provides an integrated solution for:
-	  <ul>
-	    <li>Service discovery: locating an available instance of a
-	      microservice</li>
-	    <li>Load balancing: automatically distributing requests to
-	      a particular type of microservice against all available
-	      instances of that microservice</li>
-	    <li>Upgrades and testing: automatically add/remove new
-	      versions of a microservice to the pool, which lets you
-	      transparently test and upgrade a version without rolling
-	      it out all at once.</li>
-	  </ul>
+	<ul>
+	  <li>utomatically splitting traffic among all healthy
+	    services sharing the same name in the system</li>
+	  <li>making load balancing more efficient and robust by using
+	    local load balancers</li>
+	  <li>removing problematic instances from the rotation more
+	    quickly by using local health checkers</li>
+	  <li>enabling canary testing for staged testing and
+	    deployment of service upgrades</li>
+	</ul>
 
+
+	<p>Baker Street consists of three components:</p>
+
+	<ul>
+	  <li>Sherlock - an HAProxy-based routing system, with local
+	    instances corresponding to each instance of your application
+	    to determine where connections from that instance should
+	    go</li>
+	  <li> Watson - a health checker with local instances
+	    corresponding to each instance of your application</li>
+	  <li>Datawire Directory - a global service discovery
+	    mechanism that that receives availability information from
+	    each Watson instance and pushes changes in availability to
+	    local Sherlock instances as needed.</li>
+	    
+	
 	  <h4>What else you could use?</h4>
 
 	  <p>There are a number of
