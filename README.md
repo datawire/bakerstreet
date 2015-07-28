@@ -7,13 +7,13 @@ Baker Street simplifies scaling, testing, and upgrading microservices by:
 * automatically splitting traffic among all healthy services sharing the same name in the system
 * making load balancing more efficient and robust by using local load balancers
 * removing problematic instances from the rotation more quickly by using local health checkers
-* enabling canary testing for staged testing and deployment of service upgrades.
+* enabling canary testing for staged testing and deployment of service upgrades
 
 Baker Street consists of three components:
 
-* Sherlock - a routing system with local instances corresponding to each instance of your application to determine where connections from that instance should go
+* Sherlock - an HAProxy-based routing system with local instances corresponding to each instance of your application to determine where connections from that instance should go
 * Watson - a health checker with local instances corresponding to each instance of your application
-* Datawire Directory - a global registration service recording server availability that receives availability information from each Watson instance and pushes changes in availability to local Sherlock instances as needed.
+* Datawire Directory - a global service discovery mechanism that receives availability information from each Watson instance and pushes changes in availability to local Sherlock instances as needed
 
 ##Baker Street System Requirements
 
