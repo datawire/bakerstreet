@@ -37,7 +37,7 @@
       <section class="header">
 	<img src="images/bakerstreet.png">
 	<h4 class="title">Easy service discovery and routing for microservices</h4>
-      <a class="button button-primary" href="docs/quickstart.html#setup">Install</a>
+      <a class="button button-primary" href="docs/quickstart.html">Install</a>
       </section>
     </div>
 
@@ -45,7 +45,7 @@
       <div class="eleven columns" style="margin-top: 5%">
         <h4>Introduction</h4>
 
-	<p>Baker Street simplifies scaling, testing, and upgrading microservices by:</P>
+	<p>Baker Street simplifies scaling, testing, and upgrading microservices by:
 
 	<ul>
 	  <li>automatically splitting traffic among all healthy
@@ -58,8 +58,9 @@
 	    deployment of service upgrades</li>
 	</ul>
 
+	</p>
 
-	<p>Baker Street consists of three components:</p>
+	<p>Baker Street consists of three components:
 
 	<ul>
 	  <li>Sherlock - an HAProxy-based routing system, with local
@@ -72,9 +73,12 @@
 	    mechanism that that receives availability information from
 	    each Watson instance and pushes changes in availability to
 	    local Sherlock instances as needed.</li>
+	</ul>
+
+	</p>
 	    
 	
-	  <h4>What else you could use?</h4>
+	  <h4>Alternatives</h4>
 
 	  <p>There are a number of
 	    different <a href="http://jasonwilder.com/blog/2014/02/04/service-discovery-in-the-cloud/">service
@@ -82,33 +86,52 @@
 
 	    <ul>
 	      <li>Baker Street installs in just a few minutes. Try it!</li>
+
 	      <li>None of these frameworks, with the exception
 		of <a href="http://nerds.airbnb.com/smartstack-service-discovery-cloud/">SmartStack</a>,
-		provide integrated routing. Yes, you could write your
-		own. But why bother?</li>
-	      <li>You could use SmartStack, but it requires you to set
-		up Zookeeper, and also requires you to really know
-		HAProxy-fu. We abstract this away.</li>
+		provide integrated routing. In other words, you have
+		to update your application code to use the APIs
+		provided by the service discovery framework. With
+		Baker Street, you just need to point your application
+		to the local proxy.</li>
+
+	      <li>SmartStack (we're big fans)
+		requires <a href="http://zookeeper.apache.org">Zookeeper</a>
+		by default, and also exposes the HAProxy internal
+		configuration. We've consciously decided to abstract
+		this away (although you can always edit the
+		configuration directly if you're so inclined.)</li>
 		
-	      <li>Most of the frameworks focus on consistency, not
-		availability. But what you really care about is
-		availability. When a microservice dies, you don't need
-		or want your service discovery to come to consensus
-		about whether or not it's dead -- you want to just
-		propagate this information ASAP.</li>
+	      <li>Most service discovery frameworks provide strong
+		consistency semantics and elect to trade off with
+		availability. Building highly available, strongly
+		consistent systems
+		is <a href="https://aphyr.com/posts/316-call-me-maybe-etcd-and-consul">hard
+		and complicated</a>; we're not trying to solve this
+		problem. This is because, in the service discovery
+		realm, strong consistency isn't necessary -- when a
+		microservice dies, you want to propagate the health
+		information as quickly as possible, without waiting
+		for consensus to propagate.
+	      </li>
+	      
 	    </ul>
 	  </p>
 
 	    <h4>More</h4>
 
 	     <p>Detailed documentation <a href="docs/index.html">here</a>, or just
-	      jump to the <a href="docs/quickstart.html#setup">install
+	      jump to the <a href="docs/quickstart.html">install
 		 documentation</a>.</p>
 
 	     <ul>
 	       <li><a href="https://github.com/datawire/bakerstreet">GitHub</a></li>
 	       <li><a href="https://github.com/datawire/bakerstreet/issues">Issues</a></li>
 	     </ul>
+
+	     <p>Baker Street is beta software; use in production at
+	     your own risk (but we'll help you if you run into
+	     issues).</p>
 
 	    
       </div>
