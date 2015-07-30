@@ -1,3 +1,4 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -6,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Deployment &mdash; Baker 0.3 documentation</title>
+    <title>Deployment &mdash; Baker 0.4 documentation</title>
     
     <link rel="stylesheet" href="_static/better.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,8 +15,8 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '0.3',
+        URL_ROOT:    '',
+        VERSION:     '0.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +25,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Baker 0.3 documentation" href="index.html" />
+    <link rel="top" title="Baker 0.4 documentation" href="index.html" />
     <link rel="next" title="Design and Architecture" href="architecture.html" />
     <link rel="prev" title="Quick Start" href="quickstart.html" />
 <link href='http://fonts.googleapis.com/css?family=Lato|Anonymous+Pro' rel='stylesheet' type='text/css'>
@@ -33,7 +34,7 @@
   </head>
   <body>
     <header id="pageheader"><h1><a href="index.html ">
-        Baker 0.3 documentation
+        Baker 0.4 documentation
     </a></h1></header>
   <div class="related top">
   <nav id="rellinks">
@@ -50,7 +51,7 @@
   </nav>
   <nav id="breadcrumbs">
     <ul>
-      <li><a href="index.html">Baker 0.3 documentation</a></li> 
+      <li><a href="index.html">Baker 0.4 documentation</a></li> 
     </ul>
   </nav>
   </div>  
@@ -64,14 +65,14 @@
 <span id="id1"></span><h1>Deployment<a class="headerlink" href="#deployment" title="Permalink to this headline">¶</a></h1>
 <p>The following instructions explain how to set up and utilize Baker in
 a production environment. The instructions below assume that you have
-set up the <a class="reference external" href="https://packagecloud.io/datawire/staging/install">Datawire repository on PackageCloud</a> on all relevant machines/VMs.</p>
+set up the <a class="reference external" href="https://packagecloud.io/datawire/stable/install">Datawire repository on PackageCloud</a> on all relevant machines/VMs.</p>
 <p>On Enterprise Linux 7</p>
 <pre class="literal-block">
-$ curl -s <a class="reference external" href="https://packagecloud.io/install/repositories/datawire/staging/script.rpm.sh">https://packagecloud.io/install/repositories/datawire/staging/script.rpm.sh</a> | sudo bash
+$ curl -s <a class="reference external" href="https://packagecloud.io/install/repositories/datawire/stable/script.rpm.sh">https://packagecloud.io/install/repositories/datawire/stable/script.rpm.sh</a> | sudo bash
 </pre>
 <p>On Ubuntu 14.04 LTS</p>
 <pre class="literal-block">
-$ curl -s <a class="reference external" href="https://packagecloud.io/install/repositories/datawire/staging/script.deb.sh">https://packagecloud.io/install/repositories/datawire/staging/script.deb.sh</a> | sudo bash
+$ curl -s <a class="reference external" href="https://packagecloud.io/install/repositories/datawire/stable/script.deb.sh">https://packagecloud.io/install/repositories/datawire/stable/script.deb.sh</a> | sudo bash
 </pre>
 <p>For simplicity, the examples assume a set of named servers, VMs, or
 containers set up under the domain <tt class="docutils literal"><span class="pre">example.com</span></tt>. Some pieces of the
@@ -86,11 +87,10 @@ called <tt class="docutils literal"><span class="pre">greeting</span></tt> runni
 accessed at the URL <tt class="docutils literal"><span class="pre">http://vm678.example.com/greeting</span></tt>. Any HTTP
 client would suffice. The command line examples will use <tt class="docutils literal"><span class="pre">curl</span></tt> but
 each of the following are roughly equivalent:</p>
-<div class="highlight-python"><div class="highlight"><pre>curl http://vm678.example.com/greeting
+<div class="highlight-python"><pre>curl http://vm678.example.com/greeting
 lynx -dump http://vm678.example.com/greeting
 w3m -dump http://vm678.example.com/greeting
-wget -O - http://vm678.example.com/greeting
-</pre></div>
+wget -O - http://vm678.example.com/greeting</pre>
 </div>
 <div class="section" id="directory">
 <h2>Directory<a class="headerlink" href="#directory" title="Permalink to this headline">¶</a></h2>
@@ -105,16 +105,15 @@ must have a well known stable hostname that is accessible to all
 client and service nodes participating in your deployment.</p>
 <p>Install the directory using the package tool appropriate for your
 system:</p>
-<div class="highlight-python"><div class="highlight"><pre>$ ssh directory.example.com
+<div class="highlight-python"><pre>$ ssh directory.example.com
 
 directory $ sudo yum install datawire-directory
  (or)
-directory $ sudo apt-get install datawire-directory
-</pre></div>
+directory $ sudo apt-get install datawire-directory</pre>
 </div>
 <p>Configure the well known and stable hostname of the directory as
 follows:</p>
-<div class="highlight-python"><div class="highlight"><pre>directory $ cd /etc/datawire
+<div class="highlight-python"><pre>directory $ cd /etc/datawire
 directory $ sudo nano datawire.conf
 directory $ cat datawire.conf
 [DEFAULT]
@@ -123,17 +122,14 @@ logging: WARNING
 
 [Datawire]
 ; Change this to the well known and stable hostname of the directory for your deployment.
-directory_host: directory.example.com
-</pre></div>
+directory_host: directory.example.com</pre>
 </div>
 <p>Once the directory hostname is configured, use the appropriate tool to
 start (or restart) the directory. On Enterprise Linux 7:</p>
-<div class="highlight-python"><div class="highlight"><pre>directory $ sudo systemctl start directory.service
-</pre></div>
+<div class="highlight-python"><pre>directory $ sudo systemctl start directory.service</pre>
 </div>
 <p>On Ubuntu 14.04 LTS:</p>
-<div class="highlight-python"><div class="highlight"><pre>directory $ sudo service directory start
-</pre></div>
+<div class="highlight-python"><pre>directory $ sudo service directory start</pre>
 </div>
 </div>
 <div class="section" id="sherlock">
@@ -144,16 +140,15 @@ be as simple as a command line HTTP tool like <tt class="docutils literal"><span
 a large, complicated system that needs access to dozens of services to
 perform the core operations of a business.</p>
 <p>Installing Sherlock:</p>
-<div class="highlight-python"><div class="highlight"><pre>$ ssh vm123.example.com
+<div class="highlight-python"><pre>$ ssh vm123.example.com
 
 vm123 $ sudo yum install datawire-sherlock
  (or)
-vm123 $ sudo apt-get install datawire-sherlock
-</pre></div>
+vm123 $ sudo apt-get install datawire-sherlock</pre>
 </div>
 <p>Once sherlock is installed, edit the datawire.conf to reference the
 well known directory set up in the previous section:</p>
-<div class="highlight-python"><div class="highlight"><pre>vm123 $ cd /etc/datawire
+<div class="highlight-python"><pre>vm123 $ cd /etc/datawire
 vm123 $ sudo nano datawire.conf
 vm123 $ cat datawire.conf
 [DEFAULT]
@@ -162,12 +157,11 @@ logging: WARNING
 
 [Datawire]
 ; Change this to the well known and stable hostname of the directory for your deployment.
-directory_host: directory.example.com
-</pre></div>
+directory_host: directory.example.com</pre>
 </div>
 <p>You can also tweak the sherlock preferences in sherlock.conf, however
 the defaults will generally work well:</p>
-<div class="highlight-python"><div class="highlight"><pre>vm123 $ cd /etc/datawire
+<div class="highlight-python"><pre>vm123 $ cd /etc/datawire
 vm123 $ sudo nano sherlock.conf
 vm123 $ cat sherlock.conf
 [Sherlock]
@@ -176,13 +170,11 @@ rundir: /opt/datawire/run
 debounce: 2  ; seconds
 dir_debounce: 2  ; seconds
 ; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-;logging: WARNING
-</pre></div>
+;logging: WARNING</pre>
 </div>
 <p>Now any process on your VM can access services by name without needing
 to know where instances of the service are running:</p>
-<div class="highlight-python"><div class="highlight"><pre>vm123 $ curl http://localhost:8000/&lt;service-name&gt;
-</pre></div>
+<div class="highlight-python"><pre>vm123 $ curl http://localhost:8000/&lt;service-name&gt;</pre>
 </div>
 <p>By going through HAProxy, each live instance of a service is accessed
 in round-robin fashion. If an instance drops out, e.g., for
@@ -200,16 +192,15 @@ must run co-located on the same machine/VM as the service instance.
 Watson will periodically check the health of the service instance and
 register its location and status with the directory.</p>
 <p>Installing Watson:</p>
-<div class="highlight-python"><div class="highlight"><pre>$ ssh vm101.example.com
+<div class="highlight-python"><pre>$ ssh vm101.example.com
 
 vm101 $ sudo yum install datawire-watson
   (or)
-vm101 $ sudo apt-get install datawire-watson
-</pre></div>
+vm101 $ sudo apt-get install datawire-watson</pre>
 </div>
 <p>Once Watson is installed, edit the datawire.conf to reference the well
 known directory set up in the first section:</p>
-<div class="highlight-python"><div class="highlight"><pre>vm101 $ cd /etc/datawire
+<div class="highlight-python"><pre>vm101 $ cd /etc/datawire
 vm101 $ sudo nano datawire.conf
 vm101 $ cat datawire.conf
 [DEFAULT]
@@ -218,8 +209,7 @@ logging: WARNING
 
 [Datawire]
 ; Change this to the well known and stable hostname of the directory for your deployment.
-directory_host: directory.example.com
-</pre></div>
+directory_host: directory.example.com</pre>
 </div>
 <p>Now copy the example watson configuration found in
 /etc/datawire/watson.conf.proto and configure it for your service:</p>
@@ -227,7 +217,7 @@ directory_host: directory.example.com
 <li>Provide the base url for your service.</li>
 <li>Provide the url for health checks on your service.</li>
 </ol>
-<div class="highlight-python"><div class="highlight"><pre>vm101 $ cd /etc/datawire
+<div class="highlight-python"><pre>vm101 $ cd /etc/datawire
 vm101 $ sudo cp watson.conf.proto watson.conf
 vm101 $ sudo nano watson.conf
 vm101 $ cat watson.conf
@@ -237,8 +227,7 @@ service_url: http://vm101.example.com:8080/example-service
 liveness_url: %(service_url)s/liveness_check
 period: 3  ; seconds between liveness checks
 ; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-;logging: WARNING
-</pre></div>
+;logging: WARNING</pre>
 </div>
 </div>
 <div class="section" id="more-services">
@@ -303,7 +292,7 @@ topologies that may arise.</p>
   </nav>
   <nav id="breadcrumbs">
     <ul>
-      <li><a href="index.html">Baker 0.3 documentation</a></li> 
+      <li><a href="index.html">Baker 0.4 documentation</a></li> 
     </ul>
   </nav>
   </div>
