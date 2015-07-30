@@ -5,8 +5,9 @@
   <!-- Basic Page Needs
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
   <meta charset="utf-8">
-  <title>Baker Street, service discovery and routing for microservices</title>
-  <meta name="description" content="Baker Street is an easy service discovery and routing framework for microservices">
+  <title>Baker Street, client side load balancing for microservices</title>
+  <meta name="description" content="Baker Street is an easy client
+				    side load balancer for  microservices">
   <meta name="author" content="datawire">
 
   <!-- Mobile Specific Metas
@@ -36,7 +37,7 @@
     <div class="row">
       <section class="header">
 	<img src="images/bakerstreet.png">
-	<h4 class="title">Easy service discovery and routing for microservices</h4>
+	<h4 class="title">Client side load balancing for microservices</h4>
       <a class="button button-primary" href="docs/quickstart.html">Install</a>
       </section>
     </div>
@@ -45,7 +46,10 @@
       <div class="eleven columns" style="margin-top: 5%">
         <h4>Introduction</h4>
 
-	<p>Baker Street simplifies scaling, testing, and upgrading microservices by:
+	<p>Baker Street is
+	an <a href="http://www.haproxy.org">HAProxy</a>-based client
+	side load balancer that simplifies scaling, testing, and
+	upgrading microservices by:
 
 	<ul>
 	  <li>automatically splitting traffic among all healthy
@@ -67,7 +71,7 @@
 	    instances corresponding to each instance of your application
 	    to determine where connections from that instance should
 	    go</li>
-	  <li> Watson - a health checker with local instances
+	  <li>Watson - a health checker with local instances
 	    corresponding to each instance of your application</li>
 	  <li>Datawire Directory - a global service discovery
 	    mechanism that that receives availability information from
@@ -78,44 +82,44 @@
 	</p>
 	    
 	
-	  <h4>Alternatives</h4>
+	<h4>Alternatives</h4>
 
-	  <p>There are a number of
-	    different <a href="http://jasonwilder.com/blog/2014/02/04/service-discovery-in-the-cloud/">service
-	      discovery</a> frameworks available. Why Baker Street?
+	<p>Baker Street integrates a simple service discovery
+	  framework (the Datawire Directory) with a client-side proxy
+	  component. Most companies that have deployed microservices
+	  at scale use this type of client-side architecture, instead
+	  of a centralized load balancer.</p>
 
-	    <ul>
-	      <li>Baker Street installs in just a few minutes. Try it!</li>
+	<p>If you don't use Baker Street, your choices generally are:
 
-	      <li>None of these frameworks, with the exception
-		of <a href="http://nerds.airbnb.com/smartstack-service-discovery-cloud/">SmartStack</a>,
-		provide integrated routing. In other words, you have
-		to update your application code to use the APIs
-		provided by the service discovery framework. With
-		Baker Street, you just need to point your application
-		to the local proxy.</li>
+	  <ul>
+	    <li>Use centralized load balancers. This introduces a single
+	      point of failure and requires configuration magic every
+	      time you add/remove a microservice instance.</li>
+	    <li>Write it yourself. Pick
+	      a <a href="http://jasonwilder.com/blog/2014/02/04/service-discovery-in-the-cloud/">service
+	      discovery</a> framework, write some integration code,
+	      and integrate it with HAProxy.
+	    </li>
+	    <li>Use
+	      AirBnb's <a href="http://nerds.airbnb.com/smartstack-service-discovery-cloud/">SmartStack</a>. Design-wise,
+	      SmartStack is virtually identical to Baker Street,
+	      except Baker Street doesn't
+	      use <a href="http://zookeper.apache.org">Zookeeper</a>
+	      (and it has a simpler install/config experience).</li>
+	  </ul>
+	</p>
 
-	      <li>SmartStack (we're big fans)
-		requires <a href="http://zookeeper.apache.org">Zookeeper</a>
-		by default, and also exposes the HAProxy internal
-		configuration. We've consciously decided to abstract
-		this away (although you can always edit the
-		configuration directly if you're so inclined.)</li>
-		
-	      <li>Most service discovery frameworks provide strong
-		consistency semantics and elect to trade off with
-		availability. Building highly available, strongly
-		consistent systems
-		is <a href="https://aphyr.com/posts/316-call-me-maybe-etcd-and-consul">hard
-		and complicated</a>; we're not trying to solve this
-		problem. This is because, in the service discovery
-		realm, strong consistency isn't necessary -- when a
-		microservice dies, you want to propagate the health
-		information as quickly as possible, without waiting
-		for consensus to propagate.
-	      </li>
-	      
-	    </ul>
+	<p>Baker Street doesn't use Zookeeper or the other popular
+	  service discovery frameworks because we wanted a simple,
+	  highly available service, not a strongly consistent
+	  one. (There's nothing wrong with strongly consistent
+	  semantics, except that
+	  it's <a href="https://aphyr.com/posts/316-call-me-maybe-etcd-and-consul">hard</a>,
+	  and for service discovery, you don't need it. When a service
+	  dies, you generally just want to propagate the information,
+	  without waiting for consensus.</p>
+
 	  </p>
 
 	    <h4>More</h4>
