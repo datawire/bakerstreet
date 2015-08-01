@@ -134,10 +134,20 @@
 	       <li><a href="https://groups.google.com/forum/#!forum/bakerstreetio">Mailing list</a></li>
 	     </ul>
 
+	     <h4>Running in production</h4>
+
 	     <p>Baker Street is beta software; use in production at
 	     your own risk (but we'll help you if you run into
 	     issues).</p>
 
+	     <p>A major todo for Baker Street is to support multiple
+	     directories; right now, Baker Street supports only a
+	     single directory. This means that if the directory dies,
+	     you are unable to dynamically load balance until the
+	     directory is restored. That being said, it shouldn't be a
+	     catastrophic failure for your service, as your
+	     microservices will continue to be able to communicate
+	     normally.</p>
 	    
       </div>
     </div>
