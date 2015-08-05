@@ -1,13 +1,15 @@
 from setuptools import setup
 
-__version__ = '0.4'
+metadata = {}
+with open("_metadata.py") as fp:
+    exec(fp.read(), metadata)
 
 setup(name='bakerstreet',
-      version=__version__,
-      description='Service discovery for microservices',
-      author='datawire.io',
-      author_email='hello@datawire.io',
-      license='Apache License Version 2.0',
-      url='http://www.datawire.io',
+      version=metadata["__version__"],
+      description=metadata["__summary__"],
+      author=metadata["__author__"],
+      author_email=metadata["__email__"],
+      url=metadata["__uri__"],
+      license=metadata["__license__"],
       install_requires=['datawire-common'],
       scripts=['sherlock', 'watson'])
