@@ -1,3 +1,4 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -14,7 +15,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
+        URL_ROOT:    '',
         VERSION:     '0.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -31,7 +32,7 @@
 
 
   </head>
-  <body role="document">
+  <body>
     <header id="pageheader"><h1><a href="index.html ">
         Baker 0.4 documentation
     </a></h1></header>
@@ -58,7 +59,7 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body" role="main">
+          <div class="body">
             
   <div class="section" id="design-and-architecture">
 <span id="architecture"></span><h1>Design and Architecture<a class="headerlink" href="#design-and-architecture" title="Permalink to this headline">¶</a></h1>
@@ -114,12 +115,12 @@ Baker.</p>
 <div class="section" id="service-nodes">
 <h3>Service Nodes<a class="headerlink" href="#service-nodes" title="Permalink to this headline">¶</a></h3>
 <p>A service node is responsible for keeping the directory accurately
-informed of its presence and location. Baker relies on the <code class="docutils literal"><span class="pre">watson</span></code>
+informed of its presence and location. Baker relies on the <tt class="docutils literal"><span class="pre">watson</span></tt>
 process to check the health of the service and communicate its
-presence and location to the directory. <code class="docutils literal"><span class="pre">watson</span></code> should always be
+presence and location to the directory. <tt class="docutils literal"><span class="pre">watson</span></tt> should always be
 deployed on the same server/container as the service it is
 monitoring. This deployment model minimizes issues related to node
-failure or network partitions, since <code class="docutils literal"><span class="pre">watson</span></code> can monitor the host
+failure or network partitions, since <tt class="docutils literal"><span class="pre">watson</span></tt> can monitor the host
 service directly over localhost.</p>
 </div>
 <div class="section" id="client-nodes">
@@ -127,9 +128,9 @@ service directly over localhost.</p>
 <p>A client node maintains a table of the location of all relevant
 service nodes and updates this whenever the directory notifies the
 client of changes in the state of services. Baker relies on the
-<code class="docutils literal"><span class="pre">sherlock</span></code> process to gather information from the directory about
+<tt class="docutils literal"><span class="pre">sherlock</span></tt> process to gather information from the directory about
 all available services and dynamically proxy connections from its
-co-located client processes accordingly. <code class="docutils literal"><span class="pre">sherlock</span></code> should always be
+co-located client processes accordingly. <tt class="docutils literal"><span class="pre">sherlock</span></tt> should always be
 deployed on the same server/container as the client processes it is
 supporting.</p>
 </div>
@@ -231,7 +232,7 @@ reachable from the directory in the event of a network partition.</li>
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
@@ -255,7 +256,7 @@ reachable from the directory in the event of a network partition.</li>
 </li>
 </ul>
 
-<div id="searchbox" style="display: none" role="search">
+<div id="searchbox" style="display: none">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
       <input type="text" name="q" />

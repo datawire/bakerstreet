@@ -5,7 +5,7 @@ Quick Start
 
 Ready to dive right in? This page will take you through deploying Baker in a minimal environment and then using it for load balancing and upgrading a simple service.
 
-You will need an Enterprise Linux 7 (RHEL 7, CentOS 7, etc.) or Ubuntu 14.04 LTS machine, JDK 1.8 and Maven 3+ for the simple service, and about 15 minutes of your time. Note that Baker itself does not require Java or Maven; they are only needed if you wish to run the example outlined on this page.
+You will need an Enterprise Linux 7 (RHEL 7, CentOS 7, etc.) or Ubuntu 14.04 LTS machine, JDK 1.8 and Maven 3+ for the simple service, and about 15 minutes of your time.
 
 Setup
 -----
