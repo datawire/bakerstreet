@@ -1,4 +1,3 @@
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -15,7 +14,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
+        URL_ROOT:    './',
         VERSION:     '0.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -31,7 +30,7 @@
 
 
   </head>
-  <body>
+  <body role="document">
     <header id="pageheader"><h1><a href="index.html ">
         Baker 0.4 documentation
     </a></h1></header>
@@ -54,27 +53,28 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
   <div class="section" id="reference">
 <span id="id1"></span><h1>Reference<a class="headerlink" href="#reference" title="Permalink to this headline">¶</a></h1>
-<p>The Datawire Baker components rely on configuration files to manage setup. The individual components look in <tt class="docutils literal"><span class="pre">/etc/datawire</span></tt> and <tt class="docutils literal"><span class="pre">~/.datawire</span></tt> for standard files, with the contents of the latter overriding the contents of the former. The <tt class="docutils literal"><span class="pre">--config</span></tt> command line option allows an additional file to be specified, with its contents overriding the prior files.</p>
-<p>Every component starts by loading <tt class="docutils literal"><span class="pre">datawire.conf</span></tt>:</p>
-<div class="highlight-python"><pre>[DEFAULT]
+<p>The Datawire Baker components rely on configuration files to manage setup. The individual components look in <code class="docutils literal"><span class="pre">/etc/datawire</span></code> and <code class="docutils literal"><span class="pre">~/.datawire</span></code> for standard files, with the contents of the latter overriding the contents of the former. The <code class="docutils literal"><span class="pre">--config</span></code> command line option allows an additional file to be specified, with its contents overriding the prior files.</p>
+<p>Every component starts by loading <code class="docutils literal"><span class="pre">datawire.conf</span></code>:</p>
+<div class="highlight-python"><div class="highlight"><pre>[DEFAULT]
 ; logging level may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
 logging: WARNING
 
 [Datawire]
 ; Change this to the well known and stable hostname of the directory for your deployment.
-directory_host: localhost</pre>
+directory_host: localhost
+</pre></div>
 </div>
-<p>This configuration file allows the specification of the default logging level for every Datawire component, but individual component configurations may override this by specifying a different <tt class="docutils literal"><span class="pre">logging</span></tt> directive. Component log output goes to stdout, with the operating system&#8217;s service control mechanism (systemd, Upstart, etc.) handling output redirection (to the system journal, to <tt class="docutils literal"><span class="pre">/var/log/upstart/*.log</span></tt>, etc.).</p>
+<p>This configuration file allows the specification of the default logging level for every Datawire component, but individual component configurations may override this by specifying a different <code class="docutils literal"><span class="pre">logging</span></code> directive. Component log output goes to stdout, with the operating system&#8217;s service control mechanism (systemd, Upstart, etc.) handling output redirection (to the system journal, to <code class="docutils literal"><span class="pre">/var/log/upstart/*.log</span></code>, etc.).</p>
 <p>This configuration file also contains the central designation for the host running the Datawire Directory. As one directory can serve an entire site installation, it is convenient to have this hostname specified in one place.</p>
 <div class="section" id="directory">
 <h2>Directory<a class="headerlink" href="#directory" title="Permalink to this headline">¶</a></h2>
 <p>A single Datawire Directory allows all other Baker components to communicate. Unlike the other components, the directory allows significant configuration by command line options.</p>
 <p>At the command line:</p>
-<div class="highlight-python"><pre>usage: directory [-h] [-c FILE] [-n HOST] [-p PORT] [-a ADDRESS] [-l LEVEL]
+<div class="highlight-python"><div class="highlight"><pre>usage: directory [-h] [-c FILE] [-n HOST] [-p PORT] [-a ADDRESS] [-l LEVEL]
                  [-V]
 
 optional arguments:
@@ -87,64 +87,70 @@ optional arguments:
                         amqp address, defaults to //&lt;host&gt;[:&lt;port]
   -l LEVEL, --level LEVEL
                         logging level
-  -V, --version         show program's version number and exit</pre>
+  -V, --version         show program&#39;s version number and exit
+</pre></div>
 </div>
-<p>The command line <tt class="docutils literal"><span class="pre">host</span></tt> option must be set to an externally-visible hostname for the machine running the directory; it is typically pulled from the <tt class="docutils literal"><span class="pre">directory_host</span></tt> field in <tt class="docutils literal"><span class="pre">datawire.conf</span></tt> as described above. The <tt class="docutils literal"><span class="pre">port</span></tt> and <tt class="docutils literal"><span class="pre">address</span></tt> command line options are for unusual deployments only.</p>
+<p>The command line <code class="docutils literal"><span class="pre">host</span></code> option must be set to an externally-visible hostname for the machine running the directory; it is typically pulled from the <code class="docutils literal"><span class="pre">directory_host</span></code> field in <code class="docutils literal"><span class="pre">datawire.conf</span></code> as described above. The <code class="docutils literal"><span class="pre">port</span></code> and <code class="docutils literal"><span class="pre">address</span></code> command line options are for unusual deployments only.</p>
 <p>By config file:</p>
-<div class="highlight-python"><pre>[Directory]
+<div class="highlight-python"><div class="highlight"><pre>[Directory]
 ; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-;logging: WARNING</pre>
+;logging: WARNING
+</pre></div>
 </div>
 <p>The configuration file has just one commented-out option for changing the directory&#8217;s logging level from the default.</p>
 </div>
 <div class="section" id="sherlock">
 <h2>Sherlock<a class="headerlink" href="#sherlock" title="Permalink to this headline">¶</a></h2>
-<p>A client node, which is to say a server, VM, or container that runs software that needs to access services, runs Sherlock to enable said access. Sherlock is typically deployed using its configuration file <tt class="docutils literal"><span class="pre">/etc/datawire/sherlock.conf</span></tt> and system service integration, but the command line allows specifying an additional configuration file to support special case usage.</p>
+<p>A client node, which is to say a server, VM, or container that runs software that needs to access services, runs Sherlock to enable said access. Sherlock is typically deployed using its configuration file <code class="docutils literal"><span class="pre">/etc/datawire/sherlock.conf</span></code> and system service integration, but the command line allows specifying an additional configuration file to support special case usage.</p>
 <p>At the command line:</p>
-<div class="highlight-python"><pre>usage: sherlock [-h] [-c FILE]
+<div class="highlight-python"><div class="highlight"><pre>usage: sherlock [-h] [-c FILE]
 
 optional arguments:
   -h, --help            show this help message and exit
   -c FILE, --config FILE
-                        read from additional config file</pre>
+                        read from additional config file
+</pre></div>
 </div>
 <p>The standard config file lists all the fields:</p>
-<div class="highlight-python"><pre>[Sherlock]
+<div class="highlight-python"><div class="highlight"><pre>[Sherlock]
 proxy: /usr/sbin/haproxy
 rundir: /opt/datawire/run
 debounce: 2  ; seconds
 dir_debounce: 2  ; seconds
 ; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-;logging: WARNING</pre>
+;logging: WARNING
+</pre></div>
 </div>
-<p>Sherlock gathers information about running services and the URLs of the microservices that implement them from the directory (as specified in <tt class="docutils literal"><span class="pre">datawire.conf</span></tt>). It configures and launches HAProxy (as specified by the <tt class="docutils literal"><span class="pre">proxy</span></tt> parameter), keeping HAProxy-specific files in the path specified by the <tt class="docutils literal"><span class="pre">rundir</span></tt> parameter.</p>
-<p>Reconfiguring HAProxy can introduce a brief interruption of service (well under a second), so Sherlock coalesces updates from the directory. When there are no new updates for two seconds (as configured by the <tt class="docutils literal"><span class="pre">debounce</span></tt> parameter in seconds), Sherlock outputs a new HAProxy configuration and reconfigures HAProxy. If Sherlock detects that it has disconnected from and then reconnected to the directory, it instead coaslesces over <tt class="docutils literal"><span class="pre">dir_debounce</span></tt> seconds.</p>
+<p>Sherlock gathers information about running services and the URLs of the microservices that implement them from the directory (as specified in <code class="docutils literal"><span class="pre">datawire.conf</span></code>). It configures and launches HAProxy (as specified by the <code class="docutils literal"><span class="pre">proxy</span></code> parameter), keeping HAProxy-specific files in the path specified by the <code class="docutils literal"><span class="pre">rundir</span></code> parameter.</p>
+<p>Reconfiguring HAProxy can introduce a brief interruption of service (well under a second), so Sherlock coalesces updates from the directory. When there are no new updates for two seconds (as configured by the <code class="docutils literal"><span class="pre">debounce</span></code> parameter in seconds), Sherlock outputs a new HAProxy configuration and reconfigures HAProxy. If Sherlock detects that it has disconnected from and then reconnected to the directory, it instead coaslesces over <code class="docutils literal"><span class="pre">dir_debounce</span></code> seconds.</p>
 <p>The configuration file has a commented-out option for changing sherlock&#8217;s logging level from the default.</p>
 </div>
 <div class="section" id="watson">
 <h2>Watson<a class="headerlink" href="#watson" title="Permalink to this headline">¶</a></h2>
-<p>In a typical deployment, one microservice is deployed per server, VM, or container. Watson is deployed alongside that microservice using its configuration file <tt class="docutils literal"><span class="pre">/etc/datawire/watson.conf</span></tt> and system service integration. The command line <tt class="docutils literal"><span class="pre">--config</span></tt> option exists to enable launching multiple instances of Watson on a single machine by specifying alternate configuration files.</p>
+<p>In a typical deployment, one microservice is deployed per server, VM, or container. Watson is deployed alongside that microservice using its configuration file <code class="docutils literal"><span class="pre">/etc/datawire/watson.conf</span></code> and system service integration. The command line <code class="docutils literal"><span class="pre">--config</span></code> option exists to enable launching multiple instances of Watson on a single machine by specifying alternate configuration files.</p>
 <p>At the command line:</p>
-<div class="highlight-python"><pre>usage: watson [-h] [-c FILE]
+<div class="highlight-python"><div class="highlight"><pre>usage: watson [-h] [-c FILE]
 
 optional arguments:
   -h, --help            show this help message and exit
   -c FILE, --config FILE
-                        read from additional config file</pre>
+                        read from additional config file
+</pre></div>
 </div>
-<p>The config file prototype <tt class="docutils literal"><span class="pre">watson.conf.proto</span></tt> lists all fields:</p>
-<div class="highlight-python"><pre>[Watson]
+<p>The config file prototype <code class="docutils literal"><span class="pre">watson.conf.proto</span></code> lists all fields:</p>
+<div class="highlight-python"><div class="highlight"><pre>[Watson]
 ; service_name must uniquely identify your service
 service_url: http://hostname:port/service_name
 liveness_url: %(service_url)s/liveness_check
 period: 3  ; seconds between liveness checks
 ; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-;logging: WARNING</pre>
+;logging: WARNING
+</pre></div>
 </div>
-<p>The path portion of the <tt class="docutils literal"><span class="pre">service_url</span></tt> field (&#8220;service_name&#8221; in the prototype above) is used to identify a service. This <em>service name</em> serves two key purposes:</p>
+<p>The path portion of the <code class="docutils literal"><span class="pre">service_url</span></code> field (&#8220;service_name&#8221; in the prototype above) is used to identify a service. This <em>service name</em> serves two key purposes:</p>
 <p># Sherlock uses the <em>service name</em> portion of incoming requests to determine where to route/proxy the request.
 # Every microservice whose associated <em>service name</em> is set to a particular name (e.g., greeting) is considered equivalent for load balancing.</p>
-<p>Watson connects to the liveness check URL every three seconds (as configured by the <tt class="docutils literal"><span class="pre">period</span></tt> parameter). If the service appears live (returns an HTTP response of 200), Watson ensures that the directory (as specified in <tt class="docutils literal"><span class="pre">datawire.conf</span></tt>) is aware that the service is being served at the specified <tt class="docutils literal"><span class="pre">service_url</span></tt>.</p>
+<p>Watson connects to the liveness check URL every three seconds (as configured by the <code class="docutils literal"><span class="pre">period</span></code> parameter). If the service appears live (returns an HTTP response of 200), Watson ensures that the directory (as specified in <code class="docutils literal"><span class="pre">datawire.conf</span></code>) is aware that the service is being served at the specified <code class="docutils literal"><span class="pre">service_url</span></code>.</p>
 <p>The configuration file has a commented-out option for changing watson&#8217;s logging level from the default.</p>
 </div>
 </div>
@@ -153,7 +159,7 @@ period: 3  ; seconds between liveness checks
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
@@ -165,7 +171,7 @@ period: 3  ; seconds between liveness checks
 </li>
 </ul>
 
-<div id="searchbox" style="display: none">
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
       <input type="text" name="q" />
