@@ -2,7 +2,7 @@
 def _getvar(var, path, default=None):
     with open(path) as f:
         for line in f:
-            if var in line:
+            if var in line and "=" in line and "__all__" not in line:
                 g = {}
                 l = {}
                 exec line in g, l
@@ -12,7 +12,7 @@ def _getvar(var, path, default=None):
 def _version():
     import os
     return _getvar("__version__", os.path.join(os.path.dirname(__file__),
-                                               "../../setup.py"),
+                                               "../../_metadata.py"),
                    "X.X")
 
 def _repo():
