@@ -1,4 +1,10 @@
 from setuptools import setup
+from setuptools.dist import Distribution
+
+class PurePythonDistribution(Distribution):
+    def is_pure(self):
+        return True
+
 
 metadata = {}
 with open("_metadata.py") as fp:
@@ -12,4 +18,5 @@ setup(name='bakerstreet',
       url=metadata["__uri__"],
       license=metadata["__license__"],
       install_requires=['datawire-common'],
-      scripts=['sherlock', 'watson'])
+      scripts=['sherlock', 'watson'],
+      distclass=PurePythonDistribution)
