@@ -16,17 +16,22 @@
 
 from roy import build, deps
 from pkg_common import Common
+import _metadata
 
 class Watson(Common):
 
     def __init__(self):
         self.name = "datawire-watson"
+        self.version = _metadata.__version__
         self.build_deps = []
         self.deps = [deps.datawire]
         self.arch = "all"
 
     def build(self, distro):
         result = self.install_prep()
+        result += """
+cp _metadata.py /work/install/opt/datawire/lib
+"""
         result += self.install_script("watson")
         result += self.install_config(self.name, distro.image)
         return result

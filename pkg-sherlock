@@ -16,11 +16,13 @@
 
 from roy import build, deps
 from pkg_common import Common
+import _metadata
 
 class Sherlock(Common):
 
     def __init__(self):
         self.name = "datawire-sherlock"
+        self.version = _metadata.__version__
         self.build_deps = []
         self.deps = [deps.datawire, deps.haproxy, deps.policycoreutils]
         self.arch = "all"
@@ -33,6 +35,9 @@ class Sherlock(Common):
 
     def build(self, distro):
         result = self.install_prep()
+        result += """
+cp _metadata.py /work/install/opt/datawire/lib
+"""
         result += self.install_script("sherlock")
         result += self.install_config(self.name, distro.image)
         return result
