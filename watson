@@ -152,10 +152,10 @@ def main():
     try:
         args.service_url = config.get("Watson", "service_url")
         args.service_name = config.get("Watson", "service_name")
-        args.liveness_url = config.get("Watson", "liveness_url")
+        args.health_check_url = config.get("Watson", "health_check_url")
     except Exception:
-        loader.exit_with_config_error("Configuration error: Ensure service_url, service_name, and liveness_url "
-                                      "are configured.")
+        loader.exit_with_config_error(
+            create_config_fail_message("ensure service_url, service_name and health_check_url are defined"))
 
     validate_service_name(loader, args.service_name)
 
@@ -167,12 +167,13 @@ def main():
     args.directory = "//%s/directory" % args.directory_host
     args.address = "//%s/%s" % (args.directory_host, args.service_name)
 
-    checker = LivenessByHTTPGet(args.liveness_url)
+    checker = LivenessByHTTPGet(args.health_check_url)
 
-    log.info("Starting Watson... (directory: %s, service_name: %s, service_url: %s, health: %s)" % (args.directory,
-                                                                                                    args.service_name,
-                                                                                                    args.service_url,
-                                                                                                    args.liveness_url))
+    log.info("Starting Watson... "
+             + "(directory: %s, service_name: %s, service_url: %s, health: %s)" % (args.directory,
+                                                                                   args.service_name,
+                                                                                   args.service_url,
+                                                                                   args.health_check_url))
 
     Reactor(Watson(args, checker)).run()
 
