@@ -21,9 +21,10 @@ Watson
 - Tether to the directory if GET was successful
 """
 
-import urllib2, logging
+import urllib2
+import logging
+import re
 from argparse import ArgumentParser
-from urlparse import urlparse
 
 from proton.reactor import Reactor
 
@@ -98,6 +99,28 @@ directory_host:
 period: 3
 """
 
+def create_config_fail_message(reason=None):
+    return "Failed to load configuration%s" % (": %s." % reason if reason else ".")
+
+
+def validate_service_name(config_loader, service_name):
+
+    """
+    Checks that a service name is not empty or all whitespace as well as whether the service name fits certain
+    requirements such as beginning with a a letter or underscore and that the overall service name is no longer than
+    one hundred characters.
+
+    :param config_loader: the configuration loader
+    :param service_name: the name of the service to validate
+    :return: None
+    """
+
+    pattern = re.compile("^([a-z_])([a-z0-9_-]*)$")
+    if not service_name or service_name.isspace() or not pattern.match(service_name) or len(service_name) > 100:
+        log.exception(create_config_fail_message("invalid service name"))
+        config_loader.exit_with_config_error("Configuration error: invalid service name; not defined or did not match "
+                                             "pattern (pattern: %s)" % pattern.pattern)
+
 
 def main():
     parser = ArgumentParser()
@@ -112,7 +135,7 @@ def main():
 
     config = loader.parse()
     if not loader.parsed_filenames:
-        loader.exit_with_config_error("No configuration found.")
+        loader.exit_with_config_error(create_config_fail_message("configuration not found"))
 
     try:
         args.directory_host = config.get("Datawire", "directory_host")
@@ -120,7 +143,7 @@ def main():
         args.logging = config.get("Watson", "logging")
     except Exception:
         log.exception("Failed to load configuration")
-        loader.exit_with_config_error("Failed to load configuration")
+        loader.exit_with_config_error(create_config_fail_message())
 
     if args.period < 1:
         args.period = 1
@@ -128,16 +151,13 @@ def main():
 
     try:
         args.service_url = config.get("Watson", "service_url")
+        args.service_name = config.get("Watson", "service_name")
         args.liveness_url = config.get("Watson", "liveness_url")
     except Exception:
-        loader.exit_with_config_error("Configuration error. Please ensure service_url and liveness_url are configured.")
+        loader.exit_with_config_error("Configuration error: Ensure service_url, service_name, and liveness_url "
+                                      "are configured.")
 
-    url_info = urlparse(args.service_url)
-    service_name = url_info.path
-    if service_name.startswith("/"):
-        service_name = service_name[1:]
-    if not service_name:
-        loader.exit_with_config_error("Configuration error: service_url must have a path component (http://host:port/path).")
+    validate_service_name(loader, args.service_name)
 
     log.setLevel(getattr(logging, args.logging.upper()))
     if not args.directory_host:
@@ -145,12 +165,16 @@ def main():
         args.directory_host = "localhost"
 
     args.directory = "//%s/directory" % args.directory_host
-    args.address = "//%s/%s" % (args.directory_host, service_name)
+    args.address = "//%s/%s" % (args.directory_host, args.service_name)
 
     checker = LivenessByHTTPGet(args.liveness_url)
 
-    Reactor(Watson(args, checker)).run()
+    log.info("Starting Watson... (directory: %s, service_name: %s, service_url: %s, health: %s)" % (args.directory,
+                                                                                                    args.service_name,
+                                                                                                    args.service_url,
+                                                                                                    args.liveness_url))
 
+    Reactor(Watson(args, checker)).run()
 
 if __name__ == "__main__":
     main()

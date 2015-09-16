@@ -22,7 +22,8 @@ Sherlock
 - Keep an HAProxy config file updated with tracked routes
 """
 
-import os, logging
+import os
+import logging
 from argparse import ArgumentParser
 from urlparse import urlparse
 from time import time, ctime
@@ -56,88 +57,109 @@ class Sherlock(object):
 
     def __init__(self, args):
         self.receiver = Receiver(args.directory, Processor(self))
-        self.routeMap = {}  # address -> [ url, url, ... ], policy
+        self.route_map = {}  # address -> [ url, url, ... ], policy
 
-        self.debounceInterval = args.debounce
-        self.dirDebounceInterval = args.dir_debounce
+        self.debounce_interval = args.debounce
+        self.directory_debounce_interval = args.dir_debounce
 
         self.updated = True
-        self.lastChangeTime = 0
-        self.currentDebounce = self.debounceInterval
-        self.lastConfig = None
+        self.last_modification_time = 0
+        self.current_debounce = self.debounce_interval
+        self.previous_config = None
 
-        self.cfgFilename = os.path.join(args.rundir, "haproxy.conf")
-        self.pidFilename = os.path.join(args.rundir, "haproxy.pid")
-        self.proxyCommand = "%s -f %s -p %s" % (args.proxy, self.cfgFilename, self.pidFilename)
+        self.haproxy_config_path = os.path.join(args.rundir, "haproxy.conf")
+        self.haproxy_pid_path = os.path.join(args.rundir, "haproxy.pid")
+        self.haproxy_command = "%s -f %s -p %s" % (args.proxy, self.haproxy_config_path, self.haproxy_pid_path)
 
     def on_reactor_init(self, event):
         self.receiver.start(event.reactor)
-        event.reactor.schedule(self.currentDebounce, self)
+        event.reactor.schedule(self.current_debounce, self)
 
     def on_link_remote_open(self, event):
         log.info("Detected new connection to the directory at %s", ctime())
-        self.currentDebounce = self.dirDebounceInterval
+        self.current_debounce = self.directory_debounce_interval
 
     def on_message(self, event):
         if event.message.subject != "routes":
             return
+
         msg = event.message
         address = msg.body[0]
         routes = msg.body[1]
         policy = msg.properties["policy"]
-        self.routeMap[address] = ([target
+        self.route_map[address] = ([target
                                    for (host, port, target), owner in routes
                                    if target and target.upper().startswith("HTTP")],
-                                  policy)
+                                   policy)
+
         self.updated = True
-        self.lastChangeTime = time()
-        event.reactor.schedule(self.currentDebounce, self)
+        self.last_modification_time = time()
+        event.reactor.schedule(self.current_debounce, self)
 
     def on_timer_task(self, event):
         if not self.updated:
             return
 
-        elapsed = time() - self.lastChangeTime
-        if elapsed < self.currentDebounce:
-            event.reactor.schedule(self.currentDebounce - elapsed, self)
+        elapsed = time() - self.last_modification_time
+        if elapsed < self.current_debounce:
+            event.reactor.schedule(self.current_debounce - elapsed, self)
             return
 
         self.updated = False
-        self.currentDebounce = self.debounceInterval
-        self.pokeHAProxy()
+        self.current_debounce = self.debounce_interval
+        self.update_haproxy()
 
     def render(self):
-        head = []
-        frontends = []
-        backends = []
-        for address, (routes, policy) in sorted(self.routeMap.items()):
-            head.append("# %s -> (%s) %s" % (address, policy, "; ".join(sorted(routes))))
-            urlObj = urlparse(address)
-            backend = "BE" + urlObj.path.replace("/", "_")
-            pred = "IS" + urlObj.path.replace("/", "_")
-            frontends.append("\n    acl %s path_beg %s" % (pred, urlObj.path))
-            frontends.append("    use_backend %s if %s" % (backend, pred))
-            backends.append("\nbackend %s" % backend)
-            for url in sorted(routes):
-                urlObj = urlparse(url)
-                host = urlObj.hostname
-                port = urlObj.port or 80
-                name = "%s_%s" % (host, port)
-                backends.append("    server %s %s:%s maxconn 32" % (name, host, port))
+
+        """Generates the HAProxy configuration file contents"""
+
+        head, frontends, backends = [], [], []
+        for address, (routes, policy) in sorted(self.route_map.items()):
+            if len(routes) > 0:
+                head.append("# %s -> (%s) %s" % (address, policy, "; ".join(sorted(routes))))
+
+                # there is always going to be at least one route so grab one and parse the path out of it since that is
+                # our rewrite content
+                route_url = urlparse(routes[0])
+                route_path = route_url.path
+
+                internal_url = urlparse(address)
+                service_name = internal_url.path[1:]
+                backend = "BE" + "_" + service_name
+                acl_name = "IS" + "_" + service_name
+                frontends.append("\n    acl %s path_beg %s" % (acl_name, "/%s" % service_name))
+                frontends.append("    use_backend %s if %s" % (backend, acl_name))
+                backends.append("\nbackend %s" % backend)
+
+                # Rewrites the incoming URL so that the service name is removed and replaced with the path component of
+                # the service_url as defined in watson's configuration. Afterwards the rest of the request line is added
+                # back onto the rewritten path (e.g. query parameters, fragments)
+                backends.append("   reqrep ^([^\ :]*)\ /%s(.*) \\1\ %s\\2" % (service_name,
+                                                                              (route_path if route_path else "/")))
+                for url in sorted(routes):
+                    internal_url = urlparse(url)
+                    host = internal_url.hostname
+                    port = internal_url.port or 80
+                    name = "%s_%s" % (host, port)
+                    backends.append("    server %s %s:%s maxconn 32" % (name, host, port))
+
         return "\n".join(head + confBase + frontends + backends)
 
-    def pokeHAProxy(self):
-        cfgData = self.render()
-        if cfgData != self.lastConfig:
-            self.lastConfig = cfgData
-            with open(self.cfgFilename, "wb") as outf:
+    def update_haproxy(self):
+
+        """Updates HAProxy configuration and then restarts the HAProxy process to read the configuration changes"""
+
+        haproxy_config_content = self.render()
+        if haproxy_config_content != self.previous_config:
+            self.previous_config = haproxy_config_content
+            with open(self.haproxy_config_path, "wb") as outf:
                 outf.write("# Last update %s\n" % ctime())
-                outf.write(cfgData)
+                outf.write(haproxy_config_content)
                 outf.write("\n")
-            log.info("Wrote new configuration file to %s at %s", self.cfgFilename, ctime())
-            command = self.proxyCommand
+            log.info("Wrote new configuration file to %s at %s", self.haproxy_config_path, ctime())
+            command = self.haproxy_command
             try:
-                command += " -sf %s" % open(self.pidFilename).read()
+                command += " -sf %s" % open(self.haproxy_pid_path).read()
             except IOError:
                 pass
             try:
