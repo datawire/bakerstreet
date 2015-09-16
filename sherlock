@@ -134,7 +134,7 @@ class Sherlock(object):
                 # Rewrites the incoming URL so that the service name is removed and replaced with the path component of
                 # the service_url as defined in watson's configuration. Afterwards the rest of the request line is added
                 # back onto the rewritten path (e.g. query parameters, fragments)
-                backends.append("   reqrep ^([^\ :]*)\ /%s(.*) \\1\ %s\\2" % (service_name,
+                backends.append("    reqrep ^([^\ :]*)\ /%s(.*) \\1\ %s\\2" % (service_name,
                                                                               (route_path if route_path else "/")))
                 for url in sorted(routes):
                     internal_url = urlparse(url)

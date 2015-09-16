@@ -62,11 +62,42 @@ to reference your service::
 
   $ cat watson.conf
   [Watson]
-  ; service_name must uniquely identify your service
+  ; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
+  ; the host portion of the URI.
+  ;
+  ; Examples: http://localhost:9000 or http://localhost:9000/foo
+
   service_url: http://localhost:9001/greeting
-  liveness_url: http://localhost:9001/greeting
-  period: 3  ; seconds between liveness checks
-  ; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
+
+  ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
+  ; constraints.
+  ;
+  ; Constraints
+  ; -----------
+  ; length: 1..100 characters
+  ; case: lower-case only
+  ; allowed characters: alphanumeric, underscore and hyphen.
+  ; misc: must start with a letter or underscore
+
+  service_name: greeting
+
+  ; The service health check URL. The URL must respond to HTTP GET requests.
+  ;
+  ; Warning: Be careful using property reference syntax to blindly populate service_url here (e.g. %(service_url)s because
+  ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
+  ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is most
+  ;          likely what you do not want to do.
+  ;
+  ; Examples: http://localhost:9000/health
+
+  health_check_url: http://localhost:9001/greeting
+
+  ; The number of seconds between health checks.
+
+  period: 3
+
+  ; logging level (default in datawire.conf). Valid options are: DEBUG, INFO, WARNING, ERROR, or CRITICAL.
+
   ;logging: WARNING
 
 Launch
@@ -109,21 +140,83 @@ We will need to add a Watson instance for each one. Normally, you would run one 
 
   $ cat watson-9002.conf
   [Watson]
-  ; service_name must uniquely identify your service
-  service_url: http://localhost:9002/greeting
-  liveness_url: http://localhost:9002/greeting
-  period: 3  ; seconds between liveness checks
-  ; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-  ;logging: WARNING
+    ; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
+    ; the host portion of the URI.
+    ;
+    ; Examples: http://localhost:9000 or http://localhost:9000/foo
+
+    service_url: http://localhost:9002/greeting
+
+    ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
+    ; constraints.
+    ;
+    ; Constraints
+    ; -----------
+    ; length: 1..100 characters
+    ; case: lower-case only
+    ; allowed characters: alphanumeric, underscore and hyphen.
+    ; misc: must start with a letter or underscore
+
+    service_name: greeting
+
+    ; The service health check URL. The URL must respond to HTTP GET requests.
+    ;
+    ; Warning: Be careful using property reference syntax to blindly populate service_url here (e.g. %(service_url)s because
+    ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
+    ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is most
+    ;          likely what you do not want to do.
+    ;
+    ; Examples: http://localhost:9000/health
+
+    health_check_url: http://localhost:9002/greeting
+
+    ; The number of seconds between health checks.
+
+    period: 3
+
+    ; logging level (default in datawire.conf). Valid options are: DEBUG, INFO, WARNING, ERROR, or CRITICAL.
+
+    ;logging: WARNING
 
   $ cat watson-9003.conf
   [Watson]
-  ; service_name must uniquely identify your service
-  service_url: http://localhost:9003/greeting
-  liveness_url: http://localhost:9003/greeting
-  period: 3  ; seconds between liveness checks
-  ; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-  ;logging: WARNING
+    ; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
+    ; the host portion of the URI.
+    ;
+    ; Examples: http://localhost:9000 or http://localhost:9000/foo
+
+    service_url: http://localhost:9003/greeting
+
+    ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
+    ; constraints.
+    ;
+    ; Constraints
+    ; -----------
+    ; length: 1..100 characters
+    ; case: lower-case only
+    ; allowed characters: alphanumeric, underscore and hyphen.
+    ; misc: must start with a letter or underscore
+
+    service_name: greeting
+
+    ; The service health check URL. The URL must respond to HTTP GET requests.
+    ;
+    ; Warning: Be careful using property reference syntax to blindly populate service_url here (e.g. %(service_url)s because
+    ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
+    ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is most
+    ;          likely what you do not want to do.
+    ;
+    ; Examples: http://localhost:9000/health
+
+    health_check_url: http://localhost:9003/greeting
+
+    ; The number of seconds between health checks.
+
+    period: 3
+
+    ; logging level (default in datawire.conf). Valid options are: DEBUG, INFO, WARNING, ERROR, or CRITICAL.
+
+    ;logging: WARNING
 
   $ watson -c watson-9002.conf &
   $ watson -c watson-9003.conf &
@@ -161,11 +254,42 @@ Instead of upgrading all of Greeting to the new version, let's perform a *canary
 
   $ cat watson-9004.conf
   [Watson]
-  ; service_name must uniquely identify your service
+  ; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
+  ; the host portion of the URI.
+  ;
+  ; Examples: http://localhost:9000 or http://localhost:9000/foo
+
   service_url: http://localhost:9004/greeting
-  liveness_url: http://localhost:9004/greeting
-  period: 3  ; seconds between liveness checks
-  ; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
+
+  ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
+  ; constraints.
+  ;
+  ; Constraints
+  ; -----------
+  ; length: 1..100 characters
+  ; case: lower-case only
+  ; allowed characters: alphanumeric, underscore and hyphen.
+  ; misc: must start with a letter or underscore
+
+  service_name: greeting
+
+  ; The service health check URL. The URL must respond to HTTP GET requests.
+  ;
+  ; Warning: Be careful using property reference syntax to blindly populate service_url here (e.g. %(service_url)s because
+  ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
+  ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is most
+  ;          likely what you do not want to do.
+  ;
+  ; Examples: http://localhost:9000/health
+
+  health_check_url: http://localhost:9004/greeting
+
+  ; The number of seconds between health checks.
+
+  period: 3
+
+  ; logging level (default in datawire.conf). Valid options are: DEBUG, INFO, WARNING, ERROR, or CRITICAL.
+
   ;logging: WARNING
 
   $ watson -c watson-9004.conf &
