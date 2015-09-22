@@ -74,8 +74,8 @@ The standard config file lists all the fields::
   ; The directory where HAProxy runs from and reads its configuration.
   rundir: /opt/datawire/run
 
-  ; The debounce period in seconds. The debounce period is designed to prevent HAProxy from constantly restarting due
-  ; to changes.
+  ; The debounce period in seconds. The debounce period is designed to prevent HAProxy from constantly restarting
+  ; because of changes.
   debounce: 2
   dir_debounce: 2
 
