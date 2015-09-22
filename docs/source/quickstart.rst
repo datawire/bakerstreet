@@ -148,23 +148,20 @@ We will need to add a Watson instance for each one. Normally, you would run one 
     service_url: http://localhost:9002/greeting
 
     ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
-    ; constraints.
+    ; constraints:
     ;
-    ; Constraints
-    ; -----------
-    ; length: 1..100 characters
-    ; case: lower-case only
-    ; allowed characters: alphanumeric, underscore and hyphen.
-    ; misc: must start with a letter or underscore
+    ; * minimum length: 1 character
+    ; * maximum length: 100 characters
+    ; * only lower case letters, numerical digits, underscores, and hyphens allowed
+    ; * must start with a letter or underscore
 
     service_name: greeting
 
-    ; The service health check URL. The URL must respond to HTTP GET requests.
+    ; The service health check URL. The URL must respond to HTTP GET requests. The HTTP status code 200 indicates the service is healthy, any other status code in the response indicates that it is not.
     ;
-    ; Warning: Be careful using property reference syntax to blindly populate service_url here (e.g. %(service_url)s because
+    ; Warning: Be careful using property reference syntax to blindly populate health_check_url here (e.g. %(service_url)) because
     ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
-    ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is most
-    ;          likely what you do not want to do.
+    ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is probably not the intent.
     ;
     ; Examples: http://localhost:9000/health
 
@@ -180,7 +177,7 @@ We will need to add a Watson instance for each one. Normally, you would run one 
 
   $ cat watson-9003.conf
   [Watson]
-    ; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
+   ; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
     ; the host portion of the URI.
     ;
     ; Examples: http://localhost:9000 or http://localhost:9000/foo
@@ -188,23 +185,20 @@ We will need to add a Watson instance for each one. Normally, you would run one 
     service_url: http://localhost:9003/greeting
 
     ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
-    ; constraints.
+    ; constraints:
     ;
-    ; Constraints
-    ; -----------
-    ; length: 1..100 characters
-    ; case: lower-case only
-    ; allowed characters: alphanumeric, underscore and hyphen.
-    ; misc: must start with a letter or underscore
+    ; * minimum length: 1 character
+    ; * maximum length: 100 characters
+    ; * only lower case letters, numerical digits, underscores, and hyphens allowed
+    ; * must start with a letter or underscore
 
     service_name: greeting
 
-    ; The service health check URL. The URL must respond to HTTP GET requests.
+    ; The service health check URL. The URL must respond to HTTP GET requests. The HTTP status code 200 indicates the service is healthy, any other status code in the response indicates that it is not.
     ;
-    ; Warning: Be careful using property reference syntax to blindly populate service_url here (e.g. %(service_url)s because
+    ; Warning: Be careful using property reference syntax to blindly populate health_check_url here (e.g. %(service_url)) because
     ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
-    ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is most
-    ;          likely what you do not want to do.
+    ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is probably not the intent.
     ;
     ; Examples: http://localhost:9000/health
 
