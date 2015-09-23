@@ -27,7 +27,7 @@ class Sherlock(Common):
         self.deps = [deps.datawire, deps.haproxy, deps.policycoreutils]
         self.arch = "all"
         self.conf = ["/etc/datawire/sherlock.conf"]
-        self.iteration = 2
+        self.iteration = 1
         self.postinstall = """
 /usr/sbin/setsebool -P haproxy_connect_any on || true
 /usr/bin/chcon --type haproxy_var_run_t /opt/datawire/run || true

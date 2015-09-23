@@ -21,7 +21,7 @@ __title__ = "bakerstreet"
 __summary__ = "Client-side load balancing for microservices"
 __uri__ = "http://bakerstreet.io/"
 
-__version__ = "0.4"
+__version__ = "0.5"
 
 __author__ = "datawire.io"
 __email__ = "hello@datawire.io"
