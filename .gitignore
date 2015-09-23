@@ -5,9 +5,17 @@
 build
 tags
 dist
-/.gitignore
 bakerstreet.egg-info
 
 # --- Intellij IDEA ---
 *.iml
 .idea
+
+# --- Build and Test Automation ---
+tmp
+*.tfstate
+*.tfstate.backup
+test_*.xml
+
+# --- KDE ---
+.directory

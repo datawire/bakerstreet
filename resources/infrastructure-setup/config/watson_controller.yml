@@ -1,0 +1,10 @@
+---
+# file: watson_controller.yml
+#
+# Copy to this to the location of watson_controller.py on the remote machine
+
+datawire_config_root: /etc/datawire
+
+watson_controller_port : 5002
+watson_controller_listen_address: 0.0.0.0
+watson_executable_path: /bin/watson
