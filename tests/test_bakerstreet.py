@@ -14,7 +14,7 @@ def test_resolve_service_without_path(wc_host):
 
     load_watson_with_config(wc_host, "watson-test_service-nopath.conf")
     time.sleep(5)
-    assert requests.get("http://localhost:8000/bar", params=dict(name="Homer")).text == "Hi, everybody!"
+    assert requests.get("http://localhost:8000/bar").text == "Hi, everybody!"
 
 def load_watson_with_config(wc_host, config_name):
     resp = requests.post("http://%s/watsons" % wc_host, params=dict(config_name=config_name))
