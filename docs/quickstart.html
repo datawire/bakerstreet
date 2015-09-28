@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Quick Start &mdash; Baker 0.4 documentation</title>
+    <title>Quick Start &mdash; Baker 0.5 documentation</title>
     
     <link rel="stylesheet" href="_static/better.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.4',
+        VERSION:     '0.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Baker 0.4 documentation" href="index.html" />
+    <link rel="top" title="Baker 0.5 documentation" href="index.html" />
     <link rel="next" title="Deployment" href="deployment.html" />
     <link rel="prev" title="Baker Street" href="overview.html" />
 <link href='http://fonts.googleapis.com/css?family=Lato|Anonymous+Pro' rel='stylesheet' type='text/css'>
@@ -33,7 +33,7 @@
   </head>
   <body role="document">
     <header id="pageheader"><h1><a href="index.html ">
-        Baker 0.4 documentation
+        Baker 0.5 documentation
     </a></h1></header>
   <div class="related top">
   <nav id="rellinks">
@@ -50,7 +50,7 @@
   </nav>
   <nav id="breadcrumbs">
     <ul>
-      <li><a href="index.html">Baker 0.4 documentation</a></li> 
+      <li><a href="index.html">Baker 0.5 documentation</a></li> 
     </ul>
   </nav>
   </div>  
@@ -103,19 +103,47 @@ $ sudo apt-get install datawire-directory datawire-sherlock datawire-watson
 <p>Baker looks for its configuration files in <code class="docutils literal"><span class="pre">/etc/datawire</span></code>. A sample
 configuration file for Watson is installed there. Copy it and edit it
 to reference your service:</p>
-<div class="highlight-python"><div class="highlight"><pre>$ cd /etc/datawire
-$ sudo cp watson.conf.proto watson.conf
-$ sudo nano watson.conf
- [...]
+<div class="highlight-python"><div class="highlight"><pre> $ cd /etc/datawire
+ $ sudo cp watson.conf.proto watson.conf
+ $ sudo nano watson.conf
+  [...]
 
-$ cat watson.conf
-[Watson]
-; service_name must uniquely identify your service
-service_url: http://localhost:9001/greeting
-liveness_url: http://localhost:9001/greeting
-period: 3  ; seconds between liveness checks
-; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-;logging: WARNING
+ $ cat watson.conf
+ [Watson]
+; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
+   ; the host portion of the URI.
+   ;
+   ; Examples: http://localhost:9000 or http://localhost:9000/foo
+
+   service_url: http://localhost:9001/greeting
+
+   ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
+   ; constraints:
+   ;
+   ; * minimum length: 1 character
+   ; * maximum length: 100 characters
+   ; * only lower case letters, numerical digits, underscores, and hyphens allowed
+   ; * must start with a letter or underscore
+
+   service_name: greeting
+
+   ; The service health check URL. The URL must respond to HTTP GET requests. The HTTP status code 200 indicates the service is healthy, any other status code in the response indicates that it is not.
+   ;
+   ; Warning: Be careful using property reference syntax to blindly populate health_check_url here (e.g. %(service_url)) because
+   ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
+   ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is probably not the intent.
+   ;
+   ; Examples: http://localhost:9000/health
+
+   health_check_url: http://localhost:9001/greeting
+
+   ; The number of seconds between health checks.
+
+   period: 3
+
+   ; logging level (default in datawire.conf). Valid options are: DEBUG, INFO, WARNING, ERROR, or CRITICAL.
+
+   ;logging: WARNING
 </pre></div>
 </div>
 </div>
@@ -156,21 +184,77 @@ $ nano watson-9002.conf watson-9003.conf
 
 $ cat watson-9002.conf
 [Watson]
-; service_name must uniquely identify your service
-service_url: http://localhost:9002/greeting
-liveness_url: http://localhost:9002/greeting
-period: 3  ; seconds between liveness checks
-; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-;logging: WARNING
+  ; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
+  ; the host portion of the URI.
+  ;
+  ; Examples: http://localhost:9000 or http://localhost:9000/foo
+
+  service_url: http://localhost:9002/greeting
+
+  ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
+  ; constraints:
+  ;
+  ; * minimum length: 1 character
+  ; * maximum length: 100 characters
+  ; * only lower case letters, numerical digits, underscores, and hyphens allowed
+  ; * must start with a letter or underscore
+
+  service_name: greeting
+
+  ; The service health check URL. The URL must respond to HTTP GET requests. The HTTP status code 200 indicates the service is healthy, any other status code in the response indicates that it is not.
+  ;
+  ; Warning: Be careful using property reference syntax to blindly populate health_check_url here (e.g. %(service_url)) because
+  ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
+  ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is probably not the intent.
+  ;
+  ; Examples: http://localhost:9000/health
+
+  health_check_url: http://localhost:9002/greeting
+
+  ; The number of seconds between health checks.
+
+  period: 3
+
+  ; logging level (default in datawire.conf). Valid options are: DEBUG, INFO, WARNING, ERROR, or CRITICAL.
+
+  ;logging: WARNING
 
 $ cat watson-9003.conf
 [Watson]
-; service_name must uniquely identify your service
-service_url: http://localhost:9003/greeting
-liveness_url: http://localhost:9003/greeting
-period: 3  ; seconds between liveness checks
-; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-;logging: WARNING
+ ; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
+  ; the host portion of the URI.
+  ;
+  ; Examples: http://localhost:9000 or http://localhost:9000/foo
+
+  service_url: http://localhost:9003/greeting
+
+  ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
+  ; constraints:
+  ;
+  ; * minimum length: 1 character
+  ; * maximum length: 100 characters
+  ; * only lower case letters, numerical digits, underscores, and hyphens allowed
+  ; * must start with a letter or underscore
+
+  service_name: greeting
+
+  ; The service health check URL. The URL must respond to HTTP GET requests. The HTTP status code 200 indicates the service is healthy, any other status code in the response indicates that it is not.
+  ;
+  ; Warning: Be careful using property reference syntax to blindly populate health_check_url here (e.g. %(service_url)) because
+  ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
+  ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is probably not the intent.
+  ;
+  ; Examples: http://localhost:9000/health
+
+  health_check_url: http://localhost:9003/greeting
+
+  ; The number of seconds between health checks.
+
+  period: 3
+
+  ; logging level (default in datawire.conf). Valid options are: DEBUG, INFO, WARNING, ERROR, or CRITICAL.
+
+  ;logging: WARNING
 
 $ watson -c watson-9002.conf &amp;
 $ watson -c watson-9003.conf &amp;
@@ -208,12 +292,40 @@ $ nano watson-9004.conf
 
 $ cat watson-9004.conf
 [Watson]
-; service_name must uniquely identify your service
-service_url: http://localhost:9004/greeting
-liveness_url: http://localhost:9004/greeting
-period: 3  ; seconds between liveness checks
-; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
-;logging: WARNING
+ ; The hostname (or IP address) and port number of the service. Optionally a path may be specified by appending it after
+  ; the host portion of the URI.
+  ;
+  ; Examples: http://localhost:9000 or http://localhost:9000/foo
+
+  service_url: http://localhost:9004/greeting
+
+  ; The name of the service. This must be unique within the Datawire directory. The name must also satisfy the following
+  ; constraints:
+  ;
+  ; * minimum length: 1 character
+  ; * maximum length: 100 characters
+  ; * only lower case letters, numerical digits, underscores, and hyphens allowed
+  ; * must start with a letter or underscore
+
+  service_name: greeting
+
+  ; The service health check URL. The URL must respond to HTTP GET requests. The HTTP status code 200 indicates the service is healthy, any other status code in the response indicates that it is not.
+  ;
+  ; Warning: Be careful using property reference syntax to blindly populate health_check_url here (e.g. %(service_url)) because
+  ;          defining an additional path will cause problems. For example, if service_url is http://localhost:9000/foo and
+  ;          you use $(service_url)/health then Watson will health check http://localhost:9000/foo/health which is probably not the intent.
+  ;
+  ; Examples: http://localhost:9000/health
+
+  health_check_url: http://localhost:9004/greeting
+
+  ; The number of seconds between health checks.
+
+  period: 3
+
+  ; logging level (default in datawire.conf). Valid options are: DEBUG, INFO, WARNING, ERROR, or CRITICAL.
+
+  ;logging: WARNING
 
 $ watson -c watson-9004.conf &amp;
 </pre></div>
@@ -302,7 +414,7 @@ additional management overhead.</p>
   </nav>
   <nav id="breadcrumbs">
     <ul>
-      <li><a href="index.html">Baker 0.4 documentation</a></li> 
+      <li><a href="index.html">Baker 0.5 documentation</a></li> 
     </ul>
   </nav>
   </div>
