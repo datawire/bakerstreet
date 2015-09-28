@@ -16,7 +16,7 @@ def _version():
                    "X.X")
 
 def _repo():
-    return "staging"
+    return "stable"
 
 version = _version()
 repo = _repo()
