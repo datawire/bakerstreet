@@ -7,7 +7,7 @@ class PurePythonDistribution(Distribution):
 
 
 metadata = {}
-with open("_metadata.py") as fp:
+with open("_metadata_watson.py") as fp:
     exec(fp.read(), metadata)
 
 setup(name='bakerstreet',
