@@ -1,0 +1,329 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Deployment &mdash; Baker 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/better.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/datawire.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Baker 0.5 documentation" href="index.html" />
+    <link rel="next" title="Design and Architecture" href="architecture.html" />
+    <link rel="prev" title="Quick Start" href="quickstart.html" />
+<link href='http://fonts.googleapis.com/css?family=Lato|Anonymous+Pro' rel='stylesheet' type='text/css'>
+
+
+  </head>
+  <body role="document">
+    <header id="pageheader"><h1><a href="index.html ">
+        Baker 0.5 documentation
+    </a></h1></header>
+  <div class="related top">
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="quickstart.html" title="Previous document">Quick Start</a>
+        </li>
+        <li>
+          <a href="architecture.html" title="Next document">Design and Architecture</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+  <nav id="breadcrumbs">
+    <ul>
+      <li><a href="index.html">Baker 0.5 documentation</a></li> 
+    </ul>
+  </nav>
+  </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="deployment">
+<span id="id1"></span><h1>Deployment<a class="headerlink" href="#deployment" title="Permalink to this headline">¶</a></h1>
+<p>The following instructions explain how to set up and utilize Baker in
+a production environment. The instructions below assume that you have
+set up the <a class="reference external" href="https://packagecloud.io/datawire/stable/install">Datawire repository on PackageCloud</a> on all relevant machines/VMs.</p>
+<p>On Enterprise Linux 7</p>
+<pre class="literal-block">
+$ curl -s <a class="reference external" href="https://packagecloud.io/install/repositories/datawire/stable/script.rpm.sh">https://packagecloud.io/install/repositories/datawire/stable/script.rpm.sh</a> | sudo bash
+</pre>
+<p>On Ubuntu 14.04 LTS</p>
+<pre class="literal-block">
+$ curl -s <a class="reference external" href="https://packagecloud.io/install/repositories/datawire/stable/script.deb.sh">https://packagecloud.io/install/repositories/datawire/stable/script.deb.sh</a> | sudo bash
+</pre>
+<p>For simplicity, the examples assume a set of named servers, VMs, or
+containers set up under the domain <code class="docutils literal"><span class="pre">example.com</span></code>. Some pieces of the
+system may want to run on stable resources; these are presented as
+named machines, e.g., <code class="docutils literal"><span class="pre">database.example.com</span></code>. Other pieces will
+likely be deployed, upgraded, removed, etc. on an ongoing basis; these
+would run on elastically-deployed resources named something like
+<code class="docutils literal"><span class="pre">vm123.example.com</span></code>.</p>
+<p>The example services themselves use HTTP to communicate, typically
+running in an application server like Tomcat. An example service
+called <code class="docutils literal"><span class="pre">greeting</span></code> running on the host <code class="docutils literal"><span class="pre">vm678.example.com</span></code> could be
+accessed at the URL <code class="docutils literal"><span class="pre">http://vm678.example.com/greeting</span></code>. Any HTTP
+client would suffice. The command line examples will use <code class="docutils literal"><span class="pre">curl</span></code> but
+each of the following are roughly equivalent:</p>
+<div class="highlight-python"><div class="highlight"><pre>curl http://vm678.example.com/greeting
+lynx -dump http://vm678.example.com/greeting
+w3m -dump http://vm678.example.com/greeting
+wget -O - http://vm678.example.com/greeting
+</pre></div>
+</div>
+<div class="section" id="directory">
+<h2>Directory<a class="headerlink" href="#directory" title="Permalink to this headline">¶</a></h2>
+<p>The Datawire Directory is at the core of Baker. It should run on a
+stable, reliable system that experiences relatively few interruptions.
+In practice, the Directory is able to recover from server restarts
+quickly and efficiently. The other components in Baker are designed to
+handle a brief interruption of Directory availability without any
+trouble. (For more details on this see the Baker <a class="reference internal" href="architecture.html#architecture"><span>Design and Architecture</span></a>.)</p>
+<p>The hostname of the Directory will appear in service URLs and so it
+must have a well known stable hostname that is accessible to all
+client and service nodes participating in your deployment.</p>
+<p>Install the directory using the package tool appropriate for your
+system:</p>
+<div class="highlight-python"><div class="highlight"><pre>$ ssh directory.example.com
+
+directory $ sudo yum install datawire-directory
+ (or)
+directory $ sudo apt-get install datawire-directory
+</pre></div>
+</div>
+<p>Configure the well known and stable hostname of the directory as
+follows:</p>
+<div class="highlight-python"><div class="highlight"><pre>directory $ cd /etc/datawire
+directory $ sudo nano datawire.conf
+directory $ cat datawire.conf
+[DEFAULT]
+; logging level may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
+logging: WARNING
+
+[Datawire]
+; Change this to the well known and stable hostname of the directory for your deployment.
+directory_host: directory.example.com
+</pre></div>
+</div>
+<p>Once the directory hostname is configured, use the appropriate tool to
+start (or restart) the directory. On Enterprise Linux 7:</p>
+<div class="highlight-python"><div class="highlight"><pre>directory $ sudo systemctl start directory.service
+</pre></div>
+</div>
+<p>On Ubuntu 14.04 LTS:</p>
+<div class="highlight-python"><div class="highlight"><pre>directory $ sudo service directory start
+</pre></div>
+</div>
+</div>
+<div class="section" id="sherlock">
+<h2>Sherlock<a class="headerlink" href="#sherlock" title="Permalink to this headline">¶</a></h2>
+<p>Software that needs to use a service will use Sherlock to find and
+access an instance of that service transparently. Such software might
+be as simple as a command line HTTP tool like <code class="docutils literal"><span class="pre">curl</span></code>, or it might be
+a large, complicated system that needs access to dozens of services to
+perform the core operations of a business.</p>
+<p>Installing Sherlock:</p>
+<div class="highlight-python"><div class="highlight"><pre>$ ssh vm123.example.com
+
+vm123 $ sudo yum install datawire-sherlock
+ (or)
+vm123 $ sudo apt-get install datawire-sherlock
+</pre></div>
+</div>
+<p>Once sherlock is installed, edit the datawire.conf to reference the
+well known directory set up in the previous section:</p>
+<div class="highlight-python"><div class="highlight"><pre>vm123 $ cd /etc/datawire
+vm123 $ sudo nano datawire.conf
+vm123 $ cat datawire.conf
+[DEFAULT]
+; logging level may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
+logging: WARNING
+
+[Datawire]
+; Change this to the well known and stable hostname of the directory for your deployment.
+directory_host: directory.example.com
+</pre></div>
+</div>
+<p>You can also tweak the sherlock preferences in sherlock.conf, however
+the defaults will generally work well:</p>
+<div class="highlight-python"><div class="highlight"><pre>vm123 $ cd /etc/datawire
+vm123 $ sudo nano sherlock.conf
+vm123 $ cat sherlock.conf
+[Sherlock]
+proxy: /usr/sbin/haproxy
+rundir: /opt/datawire/run
+debounce: 2  ; seconds
+dir_debounce: 2  ; seconds
+; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
+;logging: WARNING
+</pre></div>
+</div>
+<p>Now any process on your VM can access services by name without needing
+to know where instances of the service are running:</p>
+<div class="highlight-python"><div class="highlight"><pre>vm123 $ curl http://localhost:8000/&lt;service-name&gt;
+</pre></div>
+</div>
+<p>By going through HAProxy, each live instance of a service is accessed
+in round-robin fashion. If an instance drops out, e.g., for
+maintenance, Watson notifies the directory, which allows Sherlock to
+update the HAProxy configuration and keep requests flowing through the
+remaining instances. When that instance comes back, Sherlock again
+makes the appropriate adjustments to HAProxy. New instances get added
+to the pool automatically in much the same way.</p>
+</div>
+<div class="section" id="watson">
+<h2>Watson<a class="headerlink" href="#watson" title="Permalink to this headline">¶</a></h2>
+<p>Service instances that want to be dynamically accessible will use
+watson to advertise their presence to the datawire directory. Watson
+must run co-located on the same machine/VM as the service instance.
+Watson will periodically check the health of the service instance and
+register its location and status with the directory.</p>
+<p>Installing Watson:</p>
+<div class="highlight-python"><div class="highlight"><pre>$ ssh vm101.example.com
+
+vm101 $ sudo yum install datawire-watson
+  (or)
+vm101 $ sudo apt-get install datawire-watson
+</pre></div>
+</div>
+<p>Once Watson is installed, edit the datawire.conf to reference the well
+known directory set up in the first section:</p>
+<div class="highlight-python"><div class="highlight"><pre>vm101 $ cd /etc/datawire
+vm101 $ sudo nano datawire.conf
+vm101 $ cat datawire.conf
+[DEFAULT]
+; logging level may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
+logging: WARNING
+
+[Datawire]
+; Change this to the well known and stable hostname of the directory for your deployment.
+directory_host: directory.example.com
+</pre></div>
+</div>
+<p>Now copy the example watson configuration found in
+/etc/datawire/watson.conf.proto and configure it for your service:</p>
+<ol class="arabic simple">
+<li>Provide the base url for your service.</li>
+<li>Provide the url for health checks on your service.</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre>vm101 $ cd /etc/datawire
+vm101 $ sudo cp watson.conf.proto watson.conf
+vm101 $ sudo nano watson.conf
+vm101 $ cat watson.conf
+[Watson]
+; service_name must uniquely identify your service
+service_url: http://vm101.example.com:8080/example-service
+liveness_url: %(service_url)s/liveness_check
+period: 3  ; seconds between liveness checks
+; logging level (default in datawire.conf) may be DEBUG, INFO, WARNING, ERROR, or CRITICAL
+;logging: WARNING
+</pre></div>
+</div>
+</div>
+<div class="section" id="more-services">
+<h2>More Services<a class="headerlink" href="#more-services" title="Permalink to this headline">¶</a></h2>
+<p>As your system grows in complexity, your network of microservices will
+grow as well. Some services will only offer access to a resource but
+not utilize other services in the system. However, many services will
+benefit from using other services too. It is common to end up with a
+network of communicating services. Baker makes it easy for
+microservices to communicate with each other, and other Datawire
+components help to organize, manage, and understand the complicated
+topologies that may arise.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Deployment</a><ul>
+<li><a class="reference internal" href="#directory">Directory</a></li>
+<li><a class="reference internal" href="#sherlock">Sherlock</a></li>
+<li><a class="reference internal" href="#watson">Watson</a></li>
+<li><a class="reference internal" href="#more-services">More Services</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  <div class="related bottom">
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="quickstart.html" title="Previous document">Quick Start</a>
+        </li>
+        <li>
+          <a href="architecture.html" title="Next document">Design and Architecture</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+  <nav id="breadcrumbs">
+    <ul>
+      <li><a href="index.html">Baker 0.5 documentation</a></li> 
+    </ul>
+  </nav>
+  </div>
+
+  <footer id="pagefooter">&copy; 2015 datawire.io.
+
+  </footer>
+
+  
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-57322503-1', 'auto');
+  ga('send', 'pageview');
+
+  </script>
+
+  </body>
+</html>

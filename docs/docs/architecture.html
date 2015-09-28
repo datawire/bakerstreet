@@ -1,0 +1,313 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Design and Architecture &mdash; Baker 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/better.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/datawire.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Baker 0.5 documentation" href="index.html" />
+    <link rel="next" title="Reference" href="reference.html" />
+    <link rel="prev" title="Deployment" href="deployment.html" />
+<link href='http://fonts.googleapis.com/css?family=Lato|Anonymous+Pro' rel='stylesheet' type='text/css'>
+
+
+  </head>
+  <body role="document">
+    <header id="pageheader"><h1><a href="index.html ">
+        Baker 0.5 documentation
+    </a></h1></header>
+  <div class="related top">
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="deployment.html" title="Previous document">Deployment</a>
+        </li>
+        <li>
+          <a href="reference.html" title="Next document">Reference</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+  <nav id="breadcrumbs">
+    <ul>
+      <li><a href="index.html">Baker 0.5 documentation</a></li> 
+    </ul>
+  </nav>
+  </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="design-and-architecture">
+<span id="architecture"></span><h1>Design and Architecture<a class="headerlink" href="#design-and-architecture" title="Permalink to this headline">¶</a></h1>
+<p>Baker is patterned after <a class="reference external" href="http://nerds.airbnb.com/smartstack-service-discovery-cloud/">AirBnb&#8217;s SmartStack</a> which
+is an excellent piece of software and design. The aforereferenced
+blog post gives a terrific overview of the different approaches to
+service discovery and routing, which we generally agree with (hence,
+our adoption of the overall approach).</p>
+<p>Baker does make several different design decisions than SmartStack.</p>
+<ol class="arabic">
+<li><p class="first">Baker isolates its use of HAProxy from the user. We did this
+because HAProxy is commonly deployed in architectures where it is
+both a bottleneck and a single point of failure and that usage
+significantly influences its design and engineering with respect to
+robustness and performance.</p>
+<p>In this architecture HAProxy is paired with each service client and
+therefore neither a single point of failure nor a bottleneck. While
+HAProxy is an excellent conservative choice to start with, we
+expect it may ultimately make sense to replace HAProxy with a
+component that makes a different set of tradeoffs that better fit
+its role.</p>
+<p>For example HAProxy supports HTTP and TCP, but does not natively
+support other protocols. In particular, HAProxy does not support
+any async messaging protocols, which are important for many use
+cases in microservices. Also, HAProxy&#8217;s load balancing algorithms
+tend to assume that it is the only thing dispatching load to a
+given backend, however that is not the case in this architecture.</p>
+</li>
+<li><p class="first">Baker uses the Datawire directory service instead of Zookeeper.
+Zookeeper provides a strongly consistent model; the directory
+service focuses on availability. This also simplifies Baker
+deployment.</p>
+</li>
+</ol>
+<div class="section" id="deployment-model">
+<h2>Deployment Model<a class="headerlink" href="#deployment-model" title="Permalink to this headline">¶</a></h2>
+<p>A Baker deployment involves three different types of nodes. A
+directory node, a service node, and a client node. Although a node can
+take on all three roles and in practice many nodes will be both
+service and client nodes, it is conceptually easier to consider the
+three distinct node types individually.</p>
+<div class="section" id="directory-node">
+<h3>Directory Node<a class="headerlink" href="#directory-node" title="Permalink to this headline">¶</a></h3>
+<p>The Directory node functions as a rendezvous point between services and
+clients. Each service node broadcasts its presence and location to the
+directory, and the directory notifies any interested client nodes as
+service nodes come and go.</p>
+<p>There is exactly one Directory node per Baker deployment. Every
+service and client must be configured with the location of this node.
+We expect to support multiple Directory nodes in future versions of
+Baker.</p>
+</div>
+<div class="section" id="service-nodes">
+<h3>Service Nodes<a class="headerlink" href="#service-nodes" title="Permalink to this headline">¶</a></h3>
+<p>A service node is responsible for keeping the directory accurately
+informed of its presence and location. Baker relies on the <code class="docutils literal"><span class="pre">watson</span></code>
+process to check the health of the service and communicate its
+presence and location to the directory. <code class="docutils literal"><span class="pre">watson</span></code> should always be
+deployed on the same server/container as the service it is
+monitoring. This deployment model minimizes issues related to node
+failure or network partitions, since <code class="docutils literal"><span class="pre">watson</span></code> can monitor the host
+service directly over localhost.</p>
+</div>
+<div class="section" id="client-nodes">
+<h3>Client Nodes<a class="headerlink" href="#client-nodes" title="Permalink to this headline">¶</a></h3>
+<p>A client node maintains a table of the location of all relevant
+service nodes and updates this whenever the directory notifies the
+client of changes in the state of services. Baker relies on the
+<code class="docutils literal"><span class="pre">sherlock</span></code> process to gather information from the directory about
+all available services and dynamically proxy connections from its
+co-located client processes accordingly. <code class="docutils literal"><span class="pre">sherlock</span></code> should always be
+deployed on the same server/container as the client processes it is
+supporting.</p>
+</div>
+</div>
+<div class="section" id="discovery-protocol">
+<h2>Discovery Protocol<a class="headerlink" href="#discovery-protocol" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>Service Nodes<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>A service node contains the following state:</p>
+<ul class="simple">
+<li>The address of the directory.</li>
+<li>The virtual address of the service.</li>
+<li>The physical address of the service.</li>
+<li>A heartbeat interval.</li>
+</ul>
+<p>A service node is responsible for initiating contact with the
+directory and informing the directory of its presence at least once
+per heartbeat interval. If the directory node is unavailable for any
+reason, the service node will continue to retry indefinitely.</p>
+</div>
+<div class="section" id="id2">
+<h3>Client Nodes<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>A client node contains the following state:</p>
+<ul class="simple">
+<li>The address of the directory.</li>
+<li>An initially empty table of routes mapping virtual to physical
+addresses.</li>
+</ul>
+<p>A client node is responsible for initiating contact with the directory
+and registering its interest in receiving updates. If the directory
+node is unavailable for any reason, the client node will continue to
+retry indefinitely.</p>
+</div>
+<div class="section" id="id3">
+<h3>Directory Node<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>The directory node contains the following state:</p>
+<ul class="simple">
+<li>An initially empty table of routes mapping virtual to physical
+addresses.</li>
+<li>An initially empty list of client nodes interested in receiving
+updates.</li>
+</ul>
+<p>The directory node is responsible for adding, updating, and removing
+entries to/from the table of routes based on the presence/absence of
+heartbeats from service nodes. The directory will also update
+interested clients when an entry is added, updated, or removed. When a
+client initially registers interest in receiving updates, the new
+client will be caught up by receiving the full table of routes prior
+to being informed of any subsequent updates.</p>
+</div>
+</div>
+<div class="section" id="startup-order-and-node-failures">
+<h2>Startup Order and Node Failures<a class="headerlink" href="#startup-order-and-node-failures" title="Permalink to this headline">¶</a></h2>
+<p>Several key properties of the discovery protocol allow it to be
+resilient to both arbitrary startup order and node failures.</p>
+<ol class="arabic simple">
+<li>The service and client nodes are guaranteed to retry if the
+directory node is not currently available.</li>
+<li>The directory contains no state that is not dynamically constructed
+from the set of active service and client nodes.</li>
+<li>The directory catches up client nodes as they join.</li>
+<li>The client nodes replicate the routes published by the directory.</li>
+</ol>
+<p>Given the above, any configuration of nodes is guaranteed to reach the
+same (or equivalent) end state regardless of startup order.
+Additionally, given the final property, even if the directory node
+fails, all existing service and client nodes will continue to function
+normally. The only impact on the overall system will be the inability
+to dynamically add new service or client nodes.</p>
+<p>These properties make for an extremely resilient design even with a
+single directory node. Given that adding and removing service and
+client nodes is not a high volume operation, a deployment can easily
+tolerate temporary failures of the directory node, as well as short
+periods of downtime if needed for maintenance.</p>
+</div>
+<div class="section" id="network-partitions">
+<h2>Network Partitions<a class="headerlink" href="#network-partitions" title="Permalink to this headline">¶</a></h2>
+<p>In the event of a network partition, all client nodes reachable from
+the directory will be dynamically updated to use only reachable
+service nodes. Client nodes that are not reachable from the directory
+will continue to attempt to access all service nodes that were
+available prior to the network partition.</p>
+</div>
+<div class="section" id="future-work">
+<h2>Future Work<a class="headerlink" href="#future-work" title="Permalink to this headline">¶</a></h2>
+<p>We expect to extend the system in a future release to support multiple
+directory nodes. This will provide the following benefits:</p>
+<ol class="arabic simple">
+<li>Scalability and availability of directory services for deployments
+where adding and removing service and/or client nodes <em>is</em> expected
+to be a high volume operation.</li>
+<li>The ability to provide better introspection for nodes that are not
+reachable from the directory in the event of a network partition.</li>
+</ol>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Design and Architecture</a><ul>
+<li><a class="reference internal" href="#deployment-model">Deployment Model</a><ul>
+<li><a class="reference internal" href="#directory-node">Directory Node</a></li>
+<li><a class="reference internal" href="#service-nodes">Service Nodes</a></li>
+<li><a class="reference internal" href="#client-nodes">Client Nodes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#discovery-protocol">Discovery Protocol</a><ul>
+<li><a class="reference internal" href="#id1">Service Nodes</a></li>
+<li><a class="reference internal" href="#id2">Client Nodes</a></li>
+<li><a class="reference internal" href="#id3">Directory Node</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#startup-order-and-node-failures">Startup Order and Node Failures</a></li>
+<li><a class="reference internal" href="#network-partitions">Network Partitions</a></li>
+<li><a class="reference internal" href="#future-work">Future Work</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  <div class="related bottom">
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="deployment.html" title="Previous document">Deployment</a>
+        </li>
+        <li>
+          <a href="reference.html" title="Next document">Reference</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+  <nav id="breadcrumbs">
+    <ul>
+      <li><a href="index.html">Baker 0.5 documentation</a></li> 
+    </ul>
+  </nav>
+  </div>
+
+  <footer id="pagefooter">&copy; 2015 datawire.io.
+
+  </footer>
+
+  
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-57322503-1', 'auto');
+  ga('send', 'pageview');
+
+  </script>
+
+  </body>
+</html>

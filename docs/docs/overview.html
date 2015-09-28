@@ -1,0 +1,183 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Baker Street &mdash; Baker 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/better.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/datawire.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Baker 0.5 documentation" href="index.html" />
+    <link rel="next" title="Quick Start" href="quickstart.html" />
+    <link rel="prev" title="&lt;no title&gt;" href="index.html" />
+<link href='http://fonts.googleapis.com/css?family=Lato|Anonymous+Pro' rel='stylesheet' type='text/css'>
+
+
+  </head>
+  <body role="document">
+    <header id="pageheader"><h1><a href="index.html ">
+        Baker 0.5 documentation
+    </a></h1></header>
+  <div class="related top">
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="index.html" title="Previous document">&lt;no title&gt;</a>
+        </li>
+        <li>
+          <a href="quickstart.html" title="Next document">Quick Start</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+  <nav id="breadcrumbs">
+    <ul>
+      <li><a href="index.html">Baker 0.5 documentation</a></li> 
+    </ul>
+  </nav>
+  </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="baker-street">
+<h1>Baker Street<a class="headerlink" href="#baker-street" title="Permalink to this headline">¶</a></h1>
+<p>Baker Street (hereafter shortened as Baker) is a service discovery and
+routing system designed for microservice architectures. Baker
+simplifies scaling, testing, and upgrading microservices.</p>
+<div class="section" id="why-use-baker">
+<h2>Why use Baker?<a class="headerlink" href="#why-use-baker" title="Permalink to this headline">¶</a></h2>
+<p>Suppose you have two microservices, A and B, that communicate with
+each other. For scalability and availability, both microservices are
+deployed on multiple servers (or containers).</p>
+<p>Baker solves several problems:</p>
+<ol class="arabic simple">
+<li>Service discovery. Requests from A to B automatically locate an
+available instance of the B microservice.</li>
+<li>Load balancing. Requests from A to B are automatically distributed
+between all available instances of B, without requiring a central
+load balancer in front of B.</li>
+<li>Upgrades and testing. New versions of a microservice can be
+easily introduced by adding a new server instance to the service
+pool. Load will be distributed to the new version, and old
+instances can be turned off as new ones are introduced to the pool.</li>
+</ol>
+</div>
+<div class="section" id="deploying-baker">
+<h2>Deploying Baker<a class="headerlink" href="#deploying-baker" title="Permalink to this headline">¶</a></h2>
+<p>Baker runs on any modern flavor of Linux. Baker works with any
+application or microservice, regardless of programming
+language. Usually, you just need a small configuration change in your
+microservice to start using Baker.</p>
+</div>
+<div class="section" id="how-baker-works">
+<h2>How Baker Works<a class="headerlink" href="#how-baker-works" title="Permalink to this headline">¶</a></h2>
+<p>Baker consists of three main components:</p>
+<ul class="simple">
+<li>Sherlock, which is responsible for routing a microservice&#8217;s
+connections to the right destination</li>
+<li>Watson, which provides real-time liveness detection of a given
+microservice</li>
+<li>the Datawire Directory, which keeps track of all microservices and
+their associated routes</li>
+</ul>
+<p>Sherlock and Watson are deployed on every microservice container or
+server. Each microservice is then configured to proxy its connections
+through Sherlock (behind the scenes, we use the super-reliable,
+super-fast HAProxy). Sherlock uses information from the Directory to
+route connections to the appropriate destination.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Baker Street</a><ul>
+<li><a class="reference internal" href="#why-use-baker">Why use Baker?</a></li>
+<li><a class="reference internal" href="#deploying-baker">Deploying Baker</a></li>
+<li><a class="reference internal" href="#how-baker-works">How Baker Works</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  <div class="related bottom">
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="index.html" title="Previous document">&lt;no title&gt;</a>
+        </li>
+        <li>
+          <a href="quickstart.html" title="Next document">Quick Start</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+  <nav id="breadcrumbs">
+    <ul>
+      <li><a href="index.html">Baker 0.5 documentation</a></li> 
+    </ul>
+  </nav>
+  </div>
+
+  <footer id="pagefooter">&copy; 2015 datawire.io.
+
+  </footer>
+
+  
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-57322503-1', 'auto');
+  ga('send', 'pageview');
+
+  </script>
+
+  </body>
+</html>
