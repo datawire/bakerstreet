@@ -11,9 +11,7 @@ def _getvar(var, path, default=None):
 
 def _version():
     import os
-    return _getvar("__version__", os.path.join(os.path.dirname(__file__),
-                                               "../../_metadata_watson.py"),
-                   "X.X")
+    return _getvar("__version__", os.path.join(os.path.dirname(__file__), "../../bakerstreet/_metadata.py"), "X.X")
 
 def _repo():
     return "stable"
