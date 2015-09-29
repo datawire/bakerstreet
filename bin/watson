@@ -21,10 +21,13 @@ Watson
 - Tether to the directory if GET was successful
 """
 
+# TODO: REMOVE
+
 import urllib2
 import logging
 import re
 from argparse import ArgumentParser
+from bakerstreet import DEFAULT_WATSON_CONFIG
 
 from proton.reactor import Reactor
 

@@ -1,0 +1,2 @@
+datawire-common==0.5.0
+docopt==0.6.2
