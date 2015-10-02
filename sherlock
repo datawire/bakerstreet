@@ -163,7 +163,7 @@ class Sherlock(object):
             except IOError:
                 pass
             try:
-                Popen(command.split())
+                Popen(command.split(), close_fds=True)
                 log.info("Launched %s", command)
             except OSError as exc:
                 log.error("Failed to launch %r", command)
