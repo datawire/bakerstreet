@@ -21,19 +21,15 @@ Watson
 - Tether to the directory if GET was successful
 """
 
-import urllib2
+import base64
 import logging
 import re
-import uuid
-from argparse import ArgumentParser
-
 import time
-import base64
+import urllib2
 
+from argparse import ArgumentParser
 from proton.reactor import Reactor
-
 from datawire import Configuration, Tether
-
 from _metadata_watson import __version__
 
 logging.basicConfig(datefmt="%Y-%m-%d %H:%M:%S",
@@ -77,31 +73,33 @@ class Watson(object):
 
     def on_timer_task(self, event):
 
-        event_time = url_safe_current_time()
-        if self.url.endswith("/"):
-            self.url += event_time
+        event_time = current_millis_time()
+        event_url = self.url 
+        
+        if event_url.endswith("/"):
+            event_url += event_time
         else:
-            self.url += "/{0}".format(event_time)
+            event_url += "/{0}".format(event_time)
 
         if self.testLiveness():
             # Alive
             if self.tether is None:
                 # Just came to life
-                log.info("DEAD -> LIVE (%s)", self.url)
-                self.tether = Tether(self.directory, self.address, self.url)
+                log.info("DEAD -> LIVE (%s)", event_url)
+                self.tether = Tether(self.directory, self.address, event_url)
                 self.tether.start(event.reactor)
         else:
             # Dead
             if self.tether is not None:
                 # Just died
-                log.info("LIVE -> DEAD (%s)", self.url)
+                log.info("LIVE -> DEAD (%s)", event_url)
                 self.tether.stop(event.reactor)
                 self.tether = None
-                log.debug("liveness check at %s for service %s", self.testLiveness.url, self.url)
+                log.debug("liveness check at %s for service %s", self.testLiveness.url, event_url)
             elif self.justStarted:
-                log.info("START -> DEAD (%s)", self.url)
+                log.info("START -> DEAD (%s)", event_url)
                 self.justStarted = False
-                log.debug("liveness check at %s for service %s", self.testLiveness.url, self.url)
+                log.debug("liveness check at %s for service %s", self.testLiveness.url, event_url)
         event.reactor.schedule(self.testingPeriod, self)
 
 default_config = """

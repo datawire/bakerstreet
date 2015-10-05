@@ -99,10 +99,9 @@ class Sherlock(object):
         routes = msg.body[1]
 
         # The event ID was appended to the URL (target) in Watson
-        target = routes[0][0][2]
-        if target:
-            encoded_event_time = urlparse(target).path[1:]
-            watson_sent = int(base64.urlsafe_b64decode(encoded_event_time))
+        if routes:
+            target = routes[0][0][2]
+            watson_sent = int(urlparse(target).path[1:])
             sherlock_received = current_millis_time()
             latency = sherlock_received - watson_sent
 
