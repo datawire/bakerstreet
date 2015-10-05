@@ -24,7 +24,11 @@ Watson
 import urllib2
 import logging
 import re
+import uuid
 from argparse import ArgumentParser
+
+import time
+import base64
 
 from proton.reactor import Reactor
 
@@ -35,6 +39,9 @@ from _metadata_watson import __version__
 logging.basicConfig(datefmt="%Y-%m-%d %H:%M:%S",
                     format="%(asctime)s watson %(name)s %(levelname)s %(message)s")
 log = logging.getLogger()
+
+current_millis_time = lambda: int(round(time.time() * 1000))
+url_safe_current_time = lambda: base64.urlsafe_b64encode("%d" % current_millis_time())
 
 
 class LivenessByHTTPGet(object):
@@ -56,6 +63,8 @@ class LivenessByHTTPGet(object):
 class Watson(object):
 
     def __init__(self, args, testLiveness):
+        self.directory = args.directory
+        self.address = args.address
         self.tetherArgs = args.directory, args.address, args.service_url
         self.tether = None
         self.testingPeriod = args.period
@@ -67,12 +76,19 @@ class Watson(object):
         event.reactor.schedule(0, self)
 
     def on_timer_task(self, event):
+
+        event_time = url_safe_current_time()
+        if self.url.endswith("/"):
+            self.url += event_time
+        else:
+            self.url += "/{0}".format(event_time)
+
         if self.testLiveness():
             # Alive
             if self.tether is None:
                 # Just came to life
                 log.info("DEAD -> LIVE (%s)", self.url)
-                self.tether = Tether(*self.tetherArgs)
+                self.tether = Tether(self.directory, self.address, self.url)
                 self.tether.start(event.reactor)
         else:
             # Dead
@@ -81,7 +97,7 @@ class Watson(object):
                 log.info("LIVE -> DEAD (%s)", self.url)
                 self.tether.stop(event.reactor)
                 self.tether = None
-                log.debug(" liveness check at %s for service %s", self.testLiveness.url, self.url)
+                log.debug("liveness check at %s for service %s", self.testLiveness.url, self.url)
             elif self.justStarted:
                 log.info("START -> DEAD (%s)", self.url)
                 self.justStarted = False

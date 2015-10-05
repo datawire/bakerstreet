@@ -22,12 +22,16 @@ Sherlock
 - Keep an HAProxy config file updated with tracked routes
 """
 
+import atexit
+import base64
 import os
 import logging
 from argparse import ArgumentParser
 from urlparse import urlparse
 from time import time, ctime
 from subprocess import Popen
+from pprint import pprint
+import time
 
 from proton.reactor import Reactor
 from datawire import Configuration, Processor, Receiver
@@ -52,6 +56,9 @@ defaults
 frontend http-in
     bind *:8000""".split("\n")
 
+current_millis_time = lambda: int(round(time.time() * 1000))
+url_safe_current_time = lambda: base64.urlsafe_b64decode("%d" % current_millis_time())
+
 
 class Sherlock(object):
 
@@ -71,6 +78,10 @@ class Sherlock(object):
         self.haproxy_pid_path = os.path.join(args.rundir, "haproxy.pid")
         self.haproxy_command = "%s -f %s -p %s" % (args.proxy, self.haproxy_config_path, self.haproxy_pid_path)
 
+        # Statistics
+        self.notifications_received = 0
+        self.latencies = []
+
     def on_reactor_init(self, event):
         self.receiver.start(event.reactor)
         event.reactor.schedule(self.current_debounce, self)
@@ -86,21 +97,33 @@ class Sherlock(object):
         msg = event.message
         address = msg.body[0]
         routes = msg.body[1]
+
+        # The event ID was appended to the URL (target) in Watson
+        target = routes[0][0][2]
+        if target:
+            encoded_event_time = urlparse(target).path[1:]
+            watson_sent = int(base64.urlsafe_b64decode(encoded_event_time))
+            sherlock_received = current_millis_time()
+            latency = sherlock_received - watson_sent
+
+            log.debug("Routing Event (latency: %sms, watson(%s) -> sherlock(%s))", latency, watson_sent, sherlock_received)
+            self.notifications_received += 1
+            self.latencies.append(latency)
+
         policy = msg.properties["policy"]
         self.route_map[address] = ([target
                                    for (host, port, target), owner in routes
-                                   if target and target.upper().startswith("HTTP")],
-                                   policy)
+                                   if target and target.upper().startswith("HTTP")], policy)
 
         self.updated = True
-        self.last_modification_time = time()
+        self.last_modification_time = time.time()
         event.reactor.schedule(self.current_debounce, self)
 
     def on_timer_task(self, event):
         if not self.updated:
             return
 
-        elapsed = time() - self.last_modification_time
+        elapsed = time.time() - self.last_modification_time
         if elapsed < self.current_debounce:
             event.reactor.schedule(self.current_debounce - elapsed, self)
             return
@@ -185,10 +208,23 @@ debounce: 2  ; seconds
 dir_debounce: 2  ; seconds
 """
 
+def write_sherlock_stats(stats_file, sherlock, start_time):
+    import json
+    import pprint
+
+    stats = {
+        "run_length": int(time.time()) - start_time,
+        "latencies": sherlock.latencies,
+        "notifications_received": sherlock.notifications_received
+    }
+
+    with open(stats_file, "w+") as f:
+        json.dump(stats, f)
 
 def main():
     parser = ArgumentParser()
     parser.add_argument("-c", "--config", help="read from additional config file", metavar="FILE")
+    parser.add_argument("-s", "--stats-file", help="file to write sherlock statistics into", metavar="FILE")
     parser.add_argument("-V", "--version", action="version", version="%(prog)s " + __version__)
     args = parser.parse_args()
 
@@ -218,8 +254,11 @@ def main():
 
     args.directory = "//%s/directory" % args.directory_host
 
-    Reactor(Sherlock(args)).run()
+    sherlock = Sherlock(args)
+    start_time = time.time()
 
+    atexit.register(write_sherlock_stats, args.stats_file, sherlock, int(start_time))
+    Reactor(sherlock).run()
 
 if __name__ == "__main__":
     main()
