@@ -1,0 +1,24 @@
+---
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: bakerscale-server
+  namespace: default
+  labels:
+    name: bakerscale-server
+spec:
+  replicas: 1
+  selector:
+    name: bakerscale-server
+  template:
+    metadata:
+      labels:
+        name: bakerscale-server
+    spec:
+      containers:
+      - name: watson
+        image: plombardi89/bakerscale:latest
+        args: ["python", "bakerscale.py", "watson", "10.244.2.5", "http://localhost:8080/hello", "hello", "http://localhost:8080/health"]
+      - name: server
+        image: plombardi89/bakerscale:latest
+        args: ["python", "bakerscale_service.py", "8080"]

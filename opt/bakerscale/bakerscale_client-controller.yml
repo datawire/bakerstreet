@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: bakerscale-client
+  namespace: default
+  labels:
+    name: bakerscale-client
+spec:
+  replicas: 1
+  selector:
+    name: bakerscale-client
+  template:
+    metadata:
+      labels:
+        name: bakerscale-client
+    spec:
+      containers:
+      - name: sherlock
+        image: plombardi89/bakerscale:latest
+        args: ["python", "bakerscale.py", "sherlock", "10.244.2.5"]

@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: dw-directory
+  namespace: default
+  labels:
+    name: dw-directory
+spec:
+  replicas: 1
+  selector:
+    name: dw-directory
+  template:
+    metadata:
+      labels:
+        name: dw-directory
+    spec:
+      containers:
+      - name: bakerscale
+        image: plombardi89/bakerscale:latest
+        args: ["python", "bakerscale.py", "directory"]
+        ports:
+          - containerPort: 5672
