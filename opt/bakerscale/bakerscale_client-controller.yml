@@ -18,4 +18,8 @@ spec:
       containers:
       - name: sherlock
         image: plombardi89/bakerscale:latest
-        args: ["python", "bakerscale.py", "sherlock", "10.244.2.5"]
+        args: ["python", "bakerscale.py", "sherlock", "10.244.3.3"]
+        resources:
+          limits:
+            memory: "12Mi"
+            cpu: "10m"

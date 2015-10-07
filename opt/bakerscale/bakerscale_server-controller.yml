@@ -7,7 +7,7 @@ metadata:
   labels:
     name: bakerscale-server
 spec:
-  replicas: 1
+  replicas: 100
   selector:
     name: bakerscale-server
   template:
@@ -18,7 +18,15 @@ spec:
       containers:
       - name: watson
         image: plombardi89/bakerscale:latest
-        args: ["python", "bakerscale.py", "watson", "10.244.2.5", "http://localhost:8080/hello", "hello", "http://localhost:8080/health"]
+        args: ["python", "bakerscale.py", "watson", "10.244.3.3", "http://localhost:8080/", "hello", "http://localhost:8080/health"]
+        resources:
+          limits:
+            memory: "12Mi"
+            cpu: "10m"
       - name: server
         image: plombardi89/bakerscale:latest
         args: ["python", "bakerscale_service.py", "8080"]
+        resources:
+          limits:
+            memory: "12Mi"
+            cpu: "10m"
