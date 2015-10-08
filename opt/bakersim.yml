@@ -1,0 +1,27 @@
+---
+# file: bakersim.yml
+#
+# author: Philip Lombardi (plombardi@datawire.io)
+
+kubernetes:
+  config_path: /home/plombardi/.kube/config
+
+  master_instance_type: m4.large
+  node_instance_type: m4.large
+  node_count: 5
+
+bakerscale:
+  image: plombardi89/bakerscale:latest
+  simulation_profiles:
+    1h_s500_c500:
+      description: "50 cycles : 500 services, 500 clients"
+      services: 500
+      clients: 500
+      churn:
+      cycles: 50
+    s100_c100:
+      description: "Infinite - 100 services, 100 clients"
+      services: 100
+      clients: 100
+      churn: 0
+      length: 1h
