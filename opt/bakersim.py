@@ -3,33 +3,59 @@
 """bakersim.py
 
 Usage:
-    bakersim build-pkg <name>
-    bakersim build-image <dockerfile> -t <tag>
+    bakersim build-pkg <name> [--clean]
+    bakersim copy-pkg <platform> <name>
+    bakersim build-image <dockerfile> <id> [--clean] [--skip-pkg-rebuild] [--push] [--platform=<platform_name>]
     bakersim push-image <tag>
-    bakersim foo
-    bakersim install-pkg <name>
     bakersim kube-up
     bakersim kube-down
+    bakersim kube-status
     bakersim create <name>
     bakersim pod-info <name>
-    bakersim simulate <profile>
+    bakersim simulate <profile> [--cleanup]
     bakersim (-h | --help)
 
 Options:
-    --config    Use a specific configuration file
-    -h --help   Show this screen
+    --clean                 Remove the bakerstreet dist directory before operating
+    --cleanup               Remove Kubernetes components after the simulation has run [default: False]
+    --config                Use a specific configuration file
+    --platform <name>       Indicate the OS platform [default: ubuntu]
+    --push                  Push a created Docker image to the repository [default: True]
+    --skip-pkg-rebuild      Do not rebuild OS packages when creating a development Docker image
+    -h --help               Show this screen
 """
 
+import glob
 import json
 import logging
 import os
+import shutil
 import subprocess
+import time
 import yaml
 
 from docopt import docopt
+from pprint import pprint
+
+bakerstreet_components = [
+    'watson',
+    'sherlock'
+]
+
+bakerstreet_platforms = {
+    'ubuntu': {
+        'pkg_name_fmt': 'datawire-{0}_{1}-{2}_all.deb',
+        'pkg_ext': '.deb'
+    },
+    'centos': {
+        'pkg_name_fmt': 'datawire-{0}-{1}-{2}.noarch.rpm',
+        'pkg_ext': '.rpm'
+    }
+}
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-dockerfile_dir = os.path.join(script_dir, 'docker')
+bakerstreet_dir = os.path.abspath(os.path.join(script_dir, os.pardir))
+docker_context = os.path.join(script_dir, 'docker')
 
 base_kube_rc_config = {
     'apiVersion': 'v1',
@@ -45,36 +71,223 @@ base_kube_service_config = {
     'spec': {}
 }
 
+class BakerstreetClientController(object):
+    pass
+
+class ServerController(object):
+    pass
+
+class ReplicationController(object):
+
+    def __init__(self, log, name, spec_file):
+        self.log = log
+        self.name = name
+        self.spec_file = spec_file
+        self.running_replicas = 0
+        self.expected_replicas = 0
+
+    def sync_running_replica_count(self):
+
+        """
+        :return: the actual number of replicas by examining the Running Pods.
+        """
+
+        out = kubectl2("get pods --output=json --selector=name={0}".format(self.name))
+        items = json.loads(out)['items']
+
+        result = 0
+        for pod in items:
+            status = pod.get('status', {})
+            conditions = status.get('conditions', [])
+            for condition in conditions:
+                if condition['type'] == 'Ready' and condition['status']:
+                    result += 1
+
+        return result
+
+    def sync_replicas_data(self):
+        self.expected_replicas = self.sync_expected_replica_count()
+        self.running_replicas = self.sync_running_replica_count()
+
+    def sync_expected_replica_count(self):
+
+        """
+        :return: the expected number of replicas which is indicated by the Pod status.
+        """
+
+        out = kubectl2("get rc --output=json --selector=name={0}".format(self.name))
+        data = json.loads(out)
+        return data.get('items', [])[0].get('status', {}).get('replicas', 0)
+
+    def create(self, **kwargs):
+        self.log.info('launching replication controller: %s', self.spec_file)
+        out = kubectl2('create -f {0}'.format(self.spec_file))
+        self.log.info(out)
+        self.sync_replicas_data()
+
+    def delete(self):
+        self.log.info('launching replication controller: %s', self.spec_file)
+        out = kubectl2('delete -f {0}'.format(self.spec_file))
+        self.log.info(out)
+
+    def spawn(self, **kwargs):
+        self.sync_replicas_data()
+
+        count = int(kwargs.get('count', 1))
+        if self.running_replicas == self.expected_replicas:
+            new_replica_count = self.running_replicas + count
+            self.log.info('spawning replicas (running: %s, adding: %s, new total: %s)',
+                          self.running_replicas, count, new_replica_count)
+            kubectl2('scale rc {0} --replicas={1}'.format(self.name, new_replica_count))
+        else:
+            self.log.warn('running replicas does not match expected; skipping spawn (expected: %s, running: %s)',
+                          self.expected_replicas, self.running_replicas)
+
+    def kill(self, **kwargs):
+        self.sync_replicas_data()
+        count = int(kwargs.get('count', 1))
+        if count > self.running_replicas:
+            count = self.running_replicas
+
+        new_replica_count = self.running_replicas - count
+
+        self.log.info('removing replicas (current: %s, removing: %s)', 0, count)
+        kubectl2('scale rc {0} --replicas={1}'.format(self.name, new_replica_count))
+
+
+class Directory(ReplicationController):
+
+    def __init__(self, log, spec_file):
+        super(Directory, self).__init__(log, 'directory', spec_file)
+
+    def is_running(self):
+        out = kubectl2("get pods --output=json --selector=name={0}".format(self.name))
+        pods = json.loads(out)
+        if len(pods['items']) == 0:
+            self.log.warn('pod does not exist (name: %s)', self.name)
+            return False
+
+        status = pods['items'][0]['status']
+        return status['phase'] == 'Running' and 'running' in status['containerStatuses'][0]['state']
+
+    def create(self, **kwargs):
+        super(Directory, self).create(**kwargs)
+        while kwargs['wait'] and not self.is_running():
+            self.log.info('waiting for directory container to start')
+
+    def get_ip(self):
+        return pod_info(self.name)[0]['status']['podIP']
+
+class Bakersim(object):
+
+    def __init__(self, args, log, profile_name, sim_config):
+        self.args = args
+        self.log = log
+        self.profile_name = profile_name
+        self.sim_config = sim_config
+        self.profile = sim_config['profiles'][profile_name]
+        self.cycles = int(self.profile.get('cycles', -1))
+        self.cycle_quantum = int(self.profile.get('cycle_quantum', 60))
+        self.run_forever = self.cycles <= -1
+
+    def run(self):
+        self.log.info('preparing to run simulation: %s', self.profile_name)
+
+        image = self.sim_config['image']
+        directory_spec = generate_directory_rc(docker_image=image, name='directory')
+        directory = Directory(self.log, directory_spec)
+
+        if not directory.is_running():
+            directory.create(wait=True)
+
+        directory_ip = directory.get_ip()
+        server_spec = generate_bakerscale_server_rc(docker_image=image, name='bakerscale-server',
+                                                    directory_ip=directory_ip)
+        client_spec = generate_bakerscale_client_rc(docker_image=image, name='bakerscale-client',
+                                                    directory_ip=directory_ip)
+
+        servers = ReplicationController(self.log, 'bakerscale-server', server_spec)
+        clients = ReplicationController(self.log, 'bakerscale-client', client_spec)
+
+        #servers.create()
+        #clients.create()
+
+        targets = {
+            'directory': directory,
+            'servers': servers,
+            'clients': clients
+        }
+
+        self.log.info('running simulation: %s', self.profile_name)
+        cycle = 0
+        while self.run_forever is True or cycle <= self.cycles:
+            start = int(time.time())
+            self.log.debug('running cycle (%s of %s, quantum: %s)', cycle, self.cycles, self.cycle_quantum)
+
+            for task in self.profile['tasks']:
+                task_type, task_target = task['type'].split('.')
+                target = targets[task_target]
+                if target:
+                    self.log.debug('Processing task (type: %s, target: %s)', task_type, task_target)
+                    getattr(target, task_type)(**task)
+
+            cycle += 1
+            elapsed = int(time.time()) - start
+            if elapsed < self.cycle_quantum:
+                sleep_time = self.cycle_quantum - elapsed
+                self.log.debug('extra time left in cycle quantum... sleeping (seconds: %s)', sleep_time)
+                time.sleep(sleep_time)
+
+        if self.args['--cleanup']:
+            clients.delete()
+            servers.delete()
+            directory.delete()
+
+    def add_services(self, count):
+        pass
+
+    def add_clients(self, count):
+        pass
+
+    def remove_services(self, count):
+        pass
+
+    def remove_clients(self, count):
+        pass
+
+    def launch_directory(self):
+        self.log.info('launching directory')
+
+    def kill_directory(self):
+        pass
+
+    def teardown(self, component):
+        if not component.endswith(".yml"):
+            component += ".yml"
+
+        self.log.info("tearing down component (name: %s)", component)
+        #out = kubectl2("delete -f {0}".format(component))
+
+    def is_directory_running(self):
+        self.log.info('checking if directory is running...')
+
+        out = kubectl2("get pods --output=json --selector=name=dw-directory")
+        pods = json.loads(out)
+        if len(pods['items']) == 0:
+            return False
+
+        pod_status = pods['items'][0]['status']
+        return pod_status['phase'] == 'Running' and 'running' in pod_status['containerStatuses'][0]['state']
+
+    def poll_for(self, component, state='Running'):
+        self.log.info('polling for component state to stabilize ')
+
+    def __str__(self):
+        return "{0}({1})".format(self.__class__.__name__, self.profile_name)
+
 def print_process_output(proc):
     for line in iter(proc.stdout.readline, b''):
         print(">>> " + line.rstrip())
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Simulation
-# ----------------------------------------------------------------------------------------------------------------------
-
-def simulate(name, profile):
-    print("Running simulation '{0}' - {1}".format(name, profile['description']))
-
-    run_forever = profile.get('cycles', True)
-    cycle = 1
-
-    while run_forever is True or cycle <= int(profile['cycles']):
-        print("cycle {}".format(cycle))
-
-        cycle += 1
-
-def add_services(count):
-    pass
-
-def add_clients(count):
-    pass
-
-def remove_services(count):
-    pass
-
-def remove_clients(count):
-    pass
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Stats Collection Server
@@ -102,10 +315,10 @@ def generate_rc_spec(name, containers):
         'template': {
             'metadata': {
                 'labels': {'name': name}
+            },
+            'spec': {
+                'containers': containers
             }
-        },
-        'spec': {
-            'containers': containers
         }
     }
 
@@ -114,30 +327,56 @@ def generate_bakerscale_client_rc(docker_image, directory_ip, name='bakerscale-c
     content['metadata'] = generate_base_rc_metadata(name)
     content['spec'] = generate_rc_spec(name, [
         {
-            'args': ["python", "bakerscale.py", "sherlock", directory_ip],
+            'args': ["python", "bakerscale.py", "sherlock", str(directory_ip)],
             'image': docker_image,
-            'name': name
+            'name': 'sherlock',
+            'resources': {
+                'limits': {
+                    'memory': '12Mi',
+                    'cpu': '10m'
+                }
+            }
         }])
 
+    rc_config_path = os.path.join(script_dir,  name + '.yml')
+    write_yaml(rc_config_path, content)
+    return rc_config_path
 
-def generate_bakerscale_service_rc(docker_image, directory_ip, name='bakerscale-service'):
+
+def generate_bakerscale_server_rc(docker_image, directory_ip, name='bakerscale-service'):
     content = base_kube_rc_config.copy()
     content['metadata'] = generate_base_rc_metadata(name)
     content['spec'] = generate_rc_spec(name, [
         {
-            'args': ["python", "bakerscale.py", "watson", directory_ip,
+            'args': ["python", "bakerscale.py", "watson", str(directory_ip),
                      "http://localhost:8080/", "hello", "http://localhost:8080/health"],
             'image': docker_image,
-            'name': name
+            'name': 'watson',
+            'resources': {
+                'limits': {
+                    'memory': '12Mi',
+                    'cpu': '10m'
+                }
+            }
         },
         {
             'args': ["python", "bakerscale_service.py", "8080"],
             'image': docker_image,
-            'name': name
+            'name': 'server',
+            'resources': {
+                'limits': {
+                    'memory': '12Mi',
+                    'cpu': '10m'
+                }
+            }
         }])
 
+    rc_config_path = os.path.join(script_dir,  name + '.yml')
+    write_yaml(rc_config_path, content)
+    return rc_config_path
 
-def generate_directory_rc(docker_image, name='dw-directory'):
+
+def generate_directory_rc(docker_image, name='directory'):
     content = base_kube_rc_config.copy()
     content['metadata'] = generate_base_rc_metadata(name)
     content['spec'] = generate_rc_spec(name, [
@@ -151,17 +390,17 @@ def generate_directory_rc(docker_image, name='dw-directory'):
         }
     ])
 
-    rc_config_path = os.path.join(script_dir, 'directory-controller.yml')
+    rc_config_path = os.path.join(script_dir, name + '.yml')
     write_yaml(rc_config_path, content)
     return rc_config_path
 
 def create_directory(config):
-    proc = kubectl_cmd(['create', '-f', generate_directory_rc(config['image'])])
+    proc = kubectl(['create', '-f', generate_directory_rc(config['image'])])
     out, err = proc.communicate()
     print(out)
 
 def delete_directory():
-    proc = kubectl_cmd(['delete', '-f', ''])
+    proc = kubectl(['delete', '-f', ''])
     out, err = proc.communicate()
     print(out)
 
@@ -175,7 +414,7 @@ def print_pod_ip(pod_name):
 
 
 def pod_info(pod_name):
-    proc = kubectl_cmd(['get', 'pods', '--output=json', '--selector=name={0}'.format(pod_name)])
+    proc = kubectl(['get', 'pods', '--output=json', '--selector=name={0}'.format(pod_name)])
     out, err = proc.communicate()
 
     result = json.loads(out)
@@ -199,7 +438,13 @@ def kube_cmd(command, env=None):
                             stderr=subprocess.STDOUT)
     return proc
 
-def kubectl_cmd(args_and_opts, env=None):
+def kubectl(args_and_opts, env=None):
+    if isinstance(args_and_opts, basestring):
+        args_and_opts = args_and_opts.split(' ')
+
+    if not isinstance(args_and_opts, list):
+        raise ValueError('kubectl arguments and options must be passed as string or list')
+
     cmd = ['kubectl']
     cmd.extend(args_and_opts)
 
@@ -207,12 +452,19 @@ def kubectl_cmd(args_and_opts, env=None):
     if env:
         cmd_env.update(env)
 
-    proc = subprocess.Popen(cmd,
-                            cwd=script_dir,
-                            env=cmd_env,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(cmd, cwd=script_dir, env=cmd_env, close_fds=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return proc
+
+def kubectl2(args_and_opts, env=None):
+    proc = kubectl(args_and_opts, env)
+    out, err = proc.communicate()
+
+    if proc.returncode != 0:
+        raise RuntimeError('error executing <kubectl {0}> (status: {1}, msg: {2})'.format(args_and_opts,
+                                                                                          proc.returncode,
+                                                                                          out))
+    return out
 
 def kube_down():
     proc = kube_cmd("kube-down.sh", {'KUBERNETES_PROVIDER': 'aws'})
@@ -230,23 +482,79 @@ def kube_up(kube_config):
     proc = kube_cmd("kube-up.sh", env)
     print_process_output(proc)
 
+def is_kube_available():
+    proc = kubectl(['cluster-info'])
+    exit_code = proc.wait()
+    return exit_code == 0
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Packaging and Docker Commands
 # ----------------------------------------------------------------------------------------------------------------------
 
-def build_docker_image(dockerfile):
-    build_command = ['docker', 'build', '-f', '{0}/{1}'.format(dockerfile_dir, dockerfile), dockerfile_dir]
+def package_and_build(config, args):
+    if args['--clean']:
+        clean_dist()
 
-    pass
+    if args['build-image']:
+        build_image(config, args)
+
+def clean_dist():
+    shutil.rmtree(os.path.join(bakerstreet_dir, "dist"))
+
+def push_image(image_id):
+    cmd = ['docker', 'push', image_id]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    print_process_output(proc)
+
+def build_image(config, args):
+    platform = args['--platform']
+    skip_pkg_rebuild = args['--skip-pkg-rebuild']
+
+    dockerfile = args['<dockerfile>']
+    if dockerfile.endswith('-dev.dockerfile'):
+        for component in bakerstreet_components:
+            version, release = pkg_version(component)
+
+            pkg_name_fmt = bakerstreet_platforms[platform]['pkg_name_fmt']
+            pkg_file_ext = bakerstreet_platforms[platform]['pkg_ext']
+            pkg_file = pkg_name_fmt.format(component, version, release)
+
+            if not skip_pkg_rebuild:
+                build_pkg(component)
+
+            shutil.copy(os.path.join(bakerstreet_dir, 'dist', platform, pkg_file), docker_context)
+            shutil.move(os.path.join(docker_context, pkg_file),
+                        os.path.join(docker_context, 'datawire-{0}{1}'.format(component, pkg_file_ext)))
+
+    build_command = ['docker', 'build',
+                     '-t', '{0}'.format(args['<id>']),
+                     '-f', '{0}/{1}'.format(docker_context, dockerfile),
+                     docker_context]
+
+    proc = subprocess.Popen(build_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    print_process_output(proc)
+
+    if args['--push']:
+        push_image(args['<id>'])
 
 def build_pkg(name):
     work_dir = os.path.abspath(os.path.join(script_dir, os.pardir))
-    pkg_command = "{0}/{1}".format(work_dir, name)
+    pkg_command = ["python", "{0}/pkg-{1}".format(work_dir, name)]
+
     proc = subprocess.Popen(pkg_command, cwd=work_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     print_process_output(proc)
 
-def copy_pkg_to_docker_build_path():
-    pass
+def pkg_version(name):
+    cmd = ["python", "pkg-{0}".format(name), "--show-version"]
+
+    proc = subprocess.Popen(cmd, cwd=bakerstreet_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    version, err = proc.communicate()
+
+    cmd = ["python", "pkg-{0}".format(name), "--show-iteration"]
+    proc = subprocess.Popen(cmd, cwd=bakerstreet_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    iteration, err = proc.communicate()
+
+    return version.rstrip(), iteration.rstrip()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Main Program Ceremony
@@ -258,13 +566,27 @@ def main(args):
     with open(config_file, 'r') as fs:
         config = yaml.load(fs)
 
-    if args['kube-down']:
+    logging_config = config.get('logging', {
+        'level': 'INFO', 'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'})
+
+    logging.basicConfig(format=logging_config['format'], level=logging_config['level'])
+    log = logging.getLogger(__name__)
+
+    if args['build-image']:
+        package_and_build(config, args)
+
+    if args['kube-down'] and is_kube_available():
         kube_down()
         exit(0)
 
-    if args['kube-up']:
+    if args['kube-up'] and not is_kube_available():
         kube_up(config['kubernetes'])
         exit(0)
+
+    if args['kube-status']:
+        is_up = is_kube_available()
+        log.info('kubernetes cluster is available (status: %s)', "up" if is_up else "down")
+        exit(0 if is_up else 1)
 
     if args['pod-info']:
         {
@@ -281,9 +603,14 @@ def main(args):
         exit(0)
 
     if args['simulate']:
+        if not is_kube_available():
+            log.error("Cannot run simulation because Kubernetes cluster is not available")
+            exit(1)
+
         profile_name = args['<profile>']
-        profile = config['bakerscale']['simulation_profiles'][profile_name]
-        simulate(profile_name, profile)
+        sim_config = config['bakerscale']
+        Bakersim(args, log, profile_name, sim_config).run()
+        exit(0)
 
 def call_main():
     exit(main(docopt(__doc__, options_first=True)))
