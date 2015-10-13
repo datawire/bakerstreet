@@ -71,11 +71,37 @@ base_kube_service_config = {
     'spec': {}
 }
 
-class BakerstreetClientController(object):
-    pass
+class Pod(object):
 
-class ServerController(object):
-    pass
+    def __init__(self, log, name, spec_file):
+        self.log = log
+        self.name = name
+        self.spec_file = spec_file
+
+    def create(self, **kwargs):
+        self.log.info('launching pod: %s', self.spec_file)
+        out = kubectl2('create -f {0}'.format(self.spec_file))
+        self.log.info(out)
+        while kwargs['wait'] and not self.is_running():
+            self.log.info('waiting for stats-server container to start')
+
+    def delete(self):
+        self.log.info('terminating pod: %s', self.spec_file)
+        out = kubectl2('delete -f {0}'.format(self.spec_file))
+        self.log.info(out)
+
+    def get_ip(self):
+        return pod_info(self.name)[0]['status']['podIP']
+
+    def is_running(self):
+        out = kubectl2("get pods --output=json --selector=name={0}".format(self.name))
+        pods = json.loads(out)
+        if len(pods['items']) == 0:
+            self.log.warn('pod does not exist (name: %s)', self.name)
+            return False
+
+        status = pods['items'][0]['status']
+        return status['phase'] == 'Running' and 'running' in status['containerStatuses'][0]['state']
 
 class ReplicationController(object):
 
@@ -126,7 +152,7 @@ class ReplicationController(object):
         self.sync_replicas_data()
 
     def delete(self):
-        self.log.info('launching replication controller: %s', self.spec_file)
+        self.log.info('terminating replication controller: %s', self.spec_file)
         out = kubectl2('delete -f {0}'.format(self.spec_file))
         self.log.info(out)
 
@@ -194,6 +220,8 @@ class Bakersim(object):
         self.log.info('preparing to run simulation: %s', self.profile_name)
 
         image = self.sim_config['image']
+        stats_spec = generate_stats_server_rc(docker_image=image, name='stats')
+
         directory_spec = generate_directory_rc(docker_image=image, name='directory')
         directory = Directory(self.log, directory_spec)
 
@@ -201,34 +229,37 @@ class Bakersim(object):
             directory.create(wait=True)
 
         directory_ip = directory.get_ip()
+
+        stats_server = Pod(self.log, 'stats', stats_spec)
+        if not stats_server.is_running():
+            stats_server.create(wait=True)
+
+        stats_ip = stats_server.get_ip()
+
         server_spec = generate_bakerscale_server_rc(docker_image=image, name='bakerscale-server',
                                                     directory_ip=directory_ip)
         client_spec = generate_bakerscale_client_rc(docker_image=image, name='bakerscale-client',
-                                                    directory_ip=directory_ip)
+                                                    directory_ip=directory_ip, stats_ip=stats_ip)
 
         servers = ReplicationController(self.log, 'bakerscale-server', server_spec)
         clients = ReplicationController(self.log, 'bakerscale-client', client_spec)
 
-        #servers.create()
-        #clients.create()
+        servers.create()
+        clients.create()
 
-        targets = {
-            'directory': directory,
-            'servers': servers,
-            'clients': clients
-        }
+        targets = {'directory': directory, 'servers': servers, 'clients': clients}
 
         self.log.info('running simulation: %s', self.profile_name)
         cycle = 0
         while self.run_forever is True or cycle <= self.cycles:
             start = int(time.time())
-            self.log.debug('running cycle (%s of %s, quantum: %s)', cycle, self.cycles, self.cycle_quantum)
+            self.log.debug('running sim cycle (%s of %s, quantum: %s)', cycle, self.cycles, self.cycle_quantum)
 
             for task in self.profile['tasks']:
                 task_type, task_target = task['type'].split('.')
                 target = targets[task_target]
                 if target:
-                    self.log.debug('Processing task (type: %s, target: %s)', task_type, task_target)
+                    self.log.debug('processing cycle task (type: %s, target: %s)', task_type, task_target)
                     getattr(target, task_type)(**task)
 
             cycle += 1
@@ -241,46 +272,8 @@ class Bakersim(object):
         if self.args['--cleanup']:
             clients.delete()
             servers.delete()
+            stats_server.delete()
             directory.delete()
-
-    def add_services(self, count):
-        pass
-
-    def add_clients(self, count):
-        pass
-
-    def remove_services(self, count):
-        pass
-
-    def remove_clients(self, count):
-        pass
-
-    def launch_directory(self):
-        self.log.info('launching directory')
-
-    def kill_directory(self):
-        pass
-
-    def teardown(self, component):
-        if not component.endswith(".yml"):
-            component += ".yml"
-
-        self.log.info("tearing down component (name: %s)", component)
-        #out = kubectl2("delete -f {0}".format(component))
-
-    def is_directory_running(self):
-        self.log.info('checking if directory is running...')
-
-        out = kubectl2("get pods --output=json --selector=name=dw-directory")
-        pods = json.loads(out)
-        if len(pods['items']) == 0:
-            return False
-
-        pod_status = pods['items'][0]['status']
-        return pod_status['phase'] == 'Running' and 'running' in pod_status['containerStatuses'][0]['state']
-
-    def poll_for(self, component, state='Running'):
-        self.log.info('polling for component state to stabilize ')
 
     def __str__(self):
         return "{0}({1})".format(self.__class__.__name__, self.profile_name)
@@ -322,12 +315,12 @@ def generate_rc_spec(name, containers):
         }
     }
 
-def generate_bakerscale_client_rc(docker_image, directory_ip, name='bakerscale-client'):
+def generate_bakerscale_client_rc(docker_image, directory_ip, stats_ip, name='bakerscale-client'):
     content = base_kube_rc_config.copy()
     content['metadata'] = generate_base_rc_metadata(name)
     content['spec'] = generate_rc_spec(name, [
         {
-            'args': ["python", "bakerscale.py", "sherlock", str(directory_ip)],
+            'args': ["python", "bakerscale.py", "sherlock", str(directory_ip), "{0}:8080".format(str(stats_ip))],
             'image': docker_image,
             'name': 'sherlock',
             'resources': {
@@ -382,6 +375,24 @@ def generate_directory_rc(docker_image, name='directory'):
     content['spec'] = generate_rc_spec(name, [
         {
             'args': ["python", "bakerscale.py", "directory"],
+            'image': docker_image,
+            'name': name,
+            'ports': [
+                {'containerPort': 5672}
+            ]
+        }
+    ])
+
+    rc_config_path = os.path.join(script_dir, name + '.yml')
+    write_yaml(rc_config_path, content)
+    return rc_config_path
+
+def generate_stats_server_rc(docker_image, name='directory'):
+    content = base_kube_rc_config.copy()
+    content['metadata'] = generate_base_rc_metadata(name)
+    content['spec'] = generate_rc_spec(name, [
+        {
+            'args': ["python", "bakerscale_stats.py", "8080"],
             'image': docker_image,
             'name': name,
             'ports': [

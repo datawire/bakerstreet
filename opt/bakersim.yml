@@ -10,12 +10,25 @@ kubernetes:
   node_instance_type: t2.small
   node_count: 5
 
+docker:
+  file: docker/bakerscale-dev.dockerfile
+  packagecloud_repository: datawire/dev
+  packages:
+    - data
+
+packagecloud_repository: datawire/development
+packages:
+  - datawire-common
+  - datawire-directory
+  - datawire-sherlock
+  - datawire-watson
+
 logging:
   level: DEBUG
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 bakerscale:
-  image: plombardi89/bakerscale:latest
+  image: plombardi89/bs:latest
   teardown:
     - bakerscale_client
     - bakerscale_server
