@@ -16,9 +16,7 @@ RUN apt-get -y update && apt-get install -y\
  tcpdump
 
 # download necessary python libraries
-RUN yes | pip install \
-    docopt \
-    flask
+RUN yes | pip install docopt flask
 
 # install the directory and other essential datawire libraries
 RUN curl -s https://packagecloud.io/install/repositories/datawire/staging/script.deb.sh | bash
@@ -32,8 +30,9 @@ RUN gdebi -n /datawire-directory.deb
 RUN gdebi -n /datawire-sherlock.deb
 RUN gdebi -n /datawire-watson.deb
 
+RUN chmod -R 755 /opt/datawire
+
 # copy bakerscale utilities into root directory
 COPY bakerscale.py\
  bakerscale_service.py\
- bakerscale_stats.py\
  /

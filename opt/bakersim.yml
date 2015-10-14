@@ -6,8 +6,8 @@
 kubernetes:
   config_path: /home/plombardi/.kube/config
 
-  master_instance_type: t2.small
-  node_instance_type: t2.small
+  master_instance_type: m4.large
+  node_instance_type: m4.large
   node_count: 5
 
 docker:
@@ -28,11 +28,8 @@ logging:
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 bakerscale:
-  image: plombardi89/bs:latest
-  teardown:
-    - bakerscale_client
-    - bakerscale_server
-    - directory-rc
+  stats_server: 52.91.198.221
+  image: plombardi89/bs4:v3
   profiles:
     max_load:
       description: increase clients until failure
@@ -45,30 +42,3 @@ bakerscale:
           count: 10
         - type: spawn.clients
           count: 10
-    1h_s500_c500:
-      description: "50 cycles : 500 services, 500 clients"
-      services: 500
-      clients: 500
-      cycles: 50
-      cycle_length: 60s
-      tasks:
-        - type: kill
-          target: service
-          percent: 10
-        - type:
-    s100_c100:
-      description: "Infinite - 100 services, 100 clients"
-      services: 100
-      clients: 100
-      churn: 0
-      cycles: 10
-      cycle_length: 60s
-      tasks:
-        - type: spawn.service
-          args:
-            rc: bakerstreet_server
-            count: 100
-        - type: spawn.client
-          args:
-            rc: bakerstreet_client
-            count: 100

@@ -71,38 +71,6 @@ base_kube_service_config = {
     'spec': {}
 }
 
-class Pod(object):
-
-    def __init__(self, log, name, spec_file):
-        self.log = log
-        self.name = name
-        self.spec_file = spec_file
-
-    def create(self, **kwargs):
-        self.log.info('launching pod: %s', self.spec_file)
-        out = kubectl2('create -f {0}'.format(self.spec_file))
-        self.log.info(out)
-        while kwargs['wait'] and not self.is_running():
-            self.log.info('waiting for stats-server container to start')
-
-    def delete(self):
-        self.log.info('terminating pod: %s', self.spec_file)
-        out = kubectl2('delete -f {0}'.format(self.spec_file))
-        self.log.info(out)
-
-    def get_ip(self):
-        return pod_info(self.name)[0]['status']['podIP']
-
-    def is_running(self):
-        out = kubectl2("get pods --output=json --selector=name={0}".format(self.name))
-        pods = json.loads(out)
-        if len(pods['items']) == 0:
-            self.log.warn('pod does not exist (name: %s)', self.name)
-            return False
-
-        status = pods['items'][0]['status']
-        return status['phase'] == 'Running' and 'running' in status['containerStatuses'][0]['state']
-
 class ReplicationController(object):
 
     def __init__(self, log, name, spec_file):
@@ -124,9 +92,12 @@ class ReplicationController(object):
         result = 0
         for pod in items:
             status = pod.get('status', {})
+            expected_containers = len(pod['spec']['containers'])
+            running_containers = len([i for i in status.get('containerStatuses', []) if 'running' in i['state']])
+
             conditions = status.get('conditions', [])
             for condition in conditions:
-                if condition['type'] == 'Ready' and condition['status']:
+                if condition['type'] == 'Ready' and condition['status'] and expected_containers == running_containers:
                     result += 1
 
         return result
@@ -220,7 +191,6 @@ class Bakersim(object):
         self.log.info('preparing to run simulation: %s', self.profile_name)
 
         image = self.sim_config['image']
-        stats_spec = generate_stats_server_rc(docker_image=image, name='stats')
 
         directory_spec = generate_directory_rc(docker_image=image, name='directory')
         directory = Directory(self.log, directory_spec)
@@ -230,16 +200,17 @@ class Bakersim(object):
 
         directory_ip = directory.get_ip()
 
-        stats_server = Pod(self.log, 'stats', stats_spec)
-        if not stats_server.is_running():
-            stats_server.create(wait=True)
-
-        stats_ip = stats_server.get_ip()
+        # stats_server = Pod(self.log, 'stats', stats_spec)
+        # if not stats_server.is_running():
+        #     stats_server.create(wait=True)
+        #
+        # stats_ip = stats_server.get_ip()
 
         server_spec = generate_bakerscale_server_rc(docker_image=image, name='bakerscale-server',
                                                     directory_ip=directory_ip)
         client_spec = generate_bakerscale_client_rc(docker_image=image, name='bakerscale-client',
-                                                    directory_ip=directory_ip, stats_ip=stats_ip)
+                                                    directory_ip=directory_ip,
+                                                    stats_ip=self.sim_config['stats_server'])
 
         servers = ReplicationController(self.log, 'bakerscale-server', server_spec)
         clients = ReplicationController(self.log, 'bakerscale-client', client_spec)
@@ -272,7 +243,6 @@ class Bakersim(object):
         if self.args['--cleanup']:
             clients.delete()
             servers.delete()
-            stats_server.delete()
             directory.delete()
 
     def __str__(self):
@@ -325,8 +295,8 @@ def generate_bakerscale_client_rc(docker_image, directory_ip, stats_ip, name='ba
             'name': 'sherlock',
             'resources': {
                 'limits': {
-                    'memory': '12Mi',
-                    'cpu': '10m'
+                    'memory': '50Mi',
+                    'cpu': '20m'
                 }
             }
         }])
@@ -347,8 +317,8 @@ def generate_bakerscale_server_rc(docker_image, directory_ip, name='bakerscale-s
             'name': 'watson',
             'resources': {
                 'limits': {
-                    'memory': '12Mi',
-                    'cpu': '10m'
+                    'memory': '50Mi',
+                    'cpu': '20m'
                 }
             }
         },
@@ -358,8 +328,8 @@ def generate_bakerscale_server_rc(docker_image, directory_ip, name='bakerscale-s
             'name': 'server',
             'resources': {
                 'limits': {
-                    'memory': '12Mi',
-                    'cpu': '10m'
+                    'memory': '50Mi',
+                    'cpu': '20m'
                 }
             }
         }])
@@ -375,24 +345,6 @@ def generate_directory_rc(docker_image, name='directory'):
     content['spec'] = generate_rc_spec(name, [
         {
             'args': ["python", "bakerscale.py", "directory"],
-            'image': docker_image,
-            'name': name,
-            'ports': [
-                {'containerPort': 5672}
-            ]
-        }
-    ])
-
-    rc_config_path = os.path.join(script_dir, name + '.yml')
-    write_yaml(rc_config_path, content)
-    return rc_config_path
-
-def generate_stats_server_rc(docker_image, name='directory'):
-    content = base_kube_rc_config.copy()
-    content['metadata'] = generate_base_rc_metadata(name)
-    content['spec'] = generate_rc_spec(name, [
-        {
-            'args': ["python", "bakerscale_stats.py", "8080"],
             'image': docker_image,
             'name': name,
             'ports': [
@@ -538,6 +490,7 @@ def build_image(config, args):
                         os.path.join(docker_context, 'datawire-{0}{1}'.format(component, pkg_file_ext)))
 
     build_command = ['docker', 'build',
+
                      '-t', '{0}'.format(args['<id>']),
                      '-f', '{0}/{1}'.format(docker_context, dockerfile),
                      docker_context]
@@ -624,7 +577,7 @@ def main(args):
         exit(0)
 
 def call_main():
-    exit(main(docopt(__doc__, options_first=True)))
+    exit(main(docopt(__doc__)))
 
 if __name__ == "__main__":
     call_main()
