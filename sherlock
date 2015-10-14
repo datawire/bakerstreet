@@ -24,14 +24,19 @@ Sherlock
 
 import atexit
 import base64
+import httplib
 import os
 import logging
 from argparse import ArgumentParser
 from urlparse import urlparse
 from time import time, ctime
 from subprocess import Popen
-from pprint import pprint
 import time
+import json
+
+import threading
+import platform
+
 
 from proton.reactor import Reactor
 from datawire import Configuration, Processor, Receiver
@@ -60,6 +65,27 @@ current_millis_time = lambda: int(round(time.time() * 1000))
 url_safe_current_time = lambda: base64.urlsafe_b64decode("%d" % current_millis_time())
 
 
+def send_stats(stats_server, sherlock, start_time):
+    (host, port) = stats_server.split(':')
+
+    while True:
+        stats_payload = {
+            'start_time': int(start_time),
+            'latencies': sherlock.latencies,
+            'route_count': len(sherlock.route_map),
+            'notification_count': sherlock.notifications_count
+        }
+
+        conn = httplib.HTTPConnection(host, int(port))
+        conn.request('PUT', '/sherlocks/{0}/stats'.format(platform.node()), json.dumps(stats_payload))
+        response = conn.getresponse()
+
+        if response.status == 200:
+            del sherlock.latencies[:]
+
+        time.sleep(60)
+
+
 class Sherlock(object):
 
     def __init__(self, args):
@@ -79,8 +105,10 @@ class Sherlock(object):
         self.haproxy_command = "%s -f %s -p %s" % (args.proxy, self.haproxy_config_path, self.haproxy_pid_path)
 
         # Statistics
-        self.notifications_received = 0
+        self.notifications_count = 0
         self.latencies = []
+        self.last_report_time = int(time.time())
+        #self.stats_server_host, self.stats_server_port = args['stats'].split(':')
 
     def on_reactor_init(self, event):
         self.receiver.start(event.reactor)
@@ -106,13 +134,27 @@ class Sherlock(object):
             latency = sherlock_received - watson_sent
 
             log.debug("Routing Event (latency: %sms, watson(%s) -> sherlock(%s))", latency, watson_sent, sherlock_received)
-            self.notifications_received += 1
+            self.notifications_count += 1
             self.latencies.append(latency)
 
         policy = msg.properties["policy"]
         self.route_map[address] = ([target
                                    for (host, port, target), owner in routes
                                    if target and target.upper().startswith("HTTP")], policy)
+
+        # if time.time() > (self.last_report_time + 60):
+        #     stats_payload = {
+        #         'latencies': self.latencies,
+        #         'routes_count': len(self.route_map),
+        #         'notifications_count': self.notifications_count
+        #     }
+        #
+        #     conn = httplib.HTTPConnection(self.stats_server_host, int(self.stats_server_port))
+        #     conn.request('PUT', '/sherlocks/{0}/stats'.format(platform.node()), json.dumps(stats_payload))
+        #     response = conn.getresponse()
+        #
+        #     if response.status == 200:
+        #         del self.latencies[:]
 
         self.updated = True
         self.last_modification_time = time.time()
@@ -223,7 +265,7 @@ def write_sherlock_stats(stats_file, sherlock, start_time):
 def main():
     parser = ArgumentParser()
     parser.add_argument("-c", "--config", help="read from additional config file", metavar="FILE")
-    parser.add_argument("-s", "--stats-file", help="file to write sherlock statistics into", metavar="FILE")
+    parser.add_argument('--stats', help="host:port to send statistics data")
     parser.add_argument("-V", "--version", action="version", version="%(prog)s " + __version__)
     args = parser.parse_args()
 
@@ -256,7 +298,10 @@ def main():
     sherlock = Sherlock(args)
     start_time = time.time()
 
-    atexit.register(write_sherlock_stats, args.stats_file, sherlock, int(start_time))
+    stats_thread = threading.Thread(target=send_stats, args=(args.stats, sherlock, int(start_time),))
+    stats_thread.daemon = True
+    stats_thread.start()
+
     Reactor(sherlock).run()
 
 if __name__ == "__main__":
