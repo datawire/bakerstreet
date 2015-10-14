@@ -77,7 +77,7 @@ class Watson(object):
         event_url = self.url 
         
         if event_url.endswith("/"):
-            event_url += event_time
+            event_url += str(event_time)
         else:
             event_url += "/{0}".format(event_time)
 
