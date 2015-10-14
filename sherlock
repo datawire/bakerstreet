@@ -22,8 +22,6 @@ Sherlock
 - Keep an HAProxy config file updated with tracked routes
 """
 
-import atexit
-import base64
 import httplib
 import os
 import logging
@@ -36,6 +34,7 @@ import json
 
 import threading
 import platform
+import pprint
 
 
 from proton.reactor import Reactor
@@ -62,28 +61,29 @@ frontend http-in
     bind *:8000""".split("\n")
 
 current_millis_time = lambda: int(round(time.time() * 1000))
-url_safe_current_time = lambda: base64.urlsafe_b64decode("%d" % current_millis_time())
-
 
 def send_stats(stats_server, sherlock, start_time):
     (host, port) = stats_server.split(':')
 
     while True:
+        time.sleep(60)
+
+        route_map = sherlock.route_map.copy()
+        service_count = len(route_map)
+        service_endpoints = {k: {"targets": v[0], "target_count": len(v[0])} for k, v in route_map.items()}
         stats_payload = {
             'start_time': int(start_time),
             'latencies': sherlock.latencies,
-            'route_count': len(sherlock.route_map),
+            'service_count': service_count,
+            'service_endpoints': service_endpoints,
             'notification_count': sherlock.notifications_count
         }
 
         conn = httplib.HTTPConnection(host, int(port))
         conn.request('PUT', '/sherlocks/{0}/stats'.format(platform.node()), json.dumps(stats_payload))
         response = conn.getresponse()
-
-        if response.status == 200:
-            del sherlock.latencies[:]
-
-        time.sleep(60)
+        if response.status == 204 and len(sherlock.latencies) > 0:
+            sherlock.clear_latencies()
 
 
 class Sherlock(object):
@@ -107,8 +107,11 @@ class Sherlock(object):
         # Statistics
         self.notifications_count = 0
         self.latencies = []
-        self.last_report_time = int(time.time())
-        #self.stats_server_host, self.stats_server_port = args['stats'].split(':')
+        self.start_time = current_millis_time()
+        self.address_to_routes = {}
+
+    def clear_latencies(self):
+        del self.latencies[:]
 
     def on_reactor_init(self, event):
         self.receiver.start(event.reactor)
@@ -126,35 +129,82 @@ class Sherlock(object):
         address = msg.body[0]
         routes = msg.body[1]
 
-        # The event ID was appended to the URL (target) in Watson
-        if routes:
-            target = routes[0][0][2]
-            watson_sent = int(urlparse(target).path[1:])
-            sherlock_received = current_millis_time()
-            latency = sherlock_received - watson_sent
+        if address not in self.address_to_routes:
+            self.address_to_routes[address] = set([])
 
-            log.debug("Routing Event (latency: %sms, watson(%s) -> sherlock(%s))", latency, watson_sent, sherlock_received)
-            self.notifications_count += 1
-            self.latencies.append(latency)
+        if routes:
+            incoming = set([target
+                            for (host, port, target), owner in routes
+                            if target and target.upper().startswith("HTTP")])
+
+            existing = self.address_to_routes[address]
+            new_routes = [x for x in incoming if x not in existing]
+
+            if new_routes:
+                log.debug("NEW ROUTES (count: %s) ->     = %s", len(new_routes), new_routes)
+                self.notifications_count += 1
+
+            for r in new_routes:
+                self.address_to_routes[address].add(r)
+
+                # The event ID was appended to the URL (target) in Watson
+                watson_sent = int(urlparse(r).path[1:])
+                sherlock_received = current_millis_time()
+                latency = 0
+                if watson_sent >= self.start_time:
+                    latency = current_millis_time() - watson_sent
+                else:
+                    latency = sherlock_received - self.start_time
+                self.latencies.append(latency)
+
+            log.debug("""
+----[ Routes for '%s' ]----
+%s
+----------------------------------------------------------""", address, pprint.pformat(self.address_to_routes[address]))
+
+            #print(address)
+            #pprint.pprint(routes[0][0])
+
+            # target = routes[0][0][-1]
+            # watson_sent = int(urlparse(new_routes[0]).path[1:])
+            # sherlock_received = current_millis_time()
+            # latency = 0
+            # if watson_sent >= self.start_time:
+            #     log.debug("Newer Data")
+            #     latency = current_millis_time() - watson_sent
+            # else:
+            #     log.debug("Older Data")
+            #     latency = sherlock_received - self.start_time
+
+            # sherlock_received = current_millis_time()
+            # diff_start_now = sherlock_received - self.start_time
+            # latency = (sherlock_received - self.start_time) + watson_sent
+
+            # log.info("""
+            # Sherlock Start : %s
+            # Sherlock Recv  : %s
+            # Watson   Sent  : %s
+            # Latency        : %sms
+            # """, self.start_time, sherlock_received, watson_sent, latency)
+
+            # log.debug("Routing Event (latency: %sms, watson(%s) -> sherlock(%s))", latency, watson_sent, sherlock_received)
+            # self.notifications_count += 1
+            #self.latencies.append(latency)
+
+            # if address not in self.address_to_route_count:
+            #     self.address_to_route_count[address] = 0
+            #
+            # if len(routes) >= self.address_to_route_count[address]:
+            #     log.debug("New route... adding latency info")
+            #     self.address_to_route_count[address] = len(routes)
+            #     self.latencies.append(latency)
+            # else:
+            #     log.debug("Existing or ")
 
         policy = msg.properties["policy"]
-        self.route_map[address] = ([target
+        self.route_map[address] = ([target[:target.rfind("/") + 1]
                                    for (host, port, target), owner in routes
                                    if target and target.upper().startswith("HTTP")], policy)
-
-        # if time.time() > (self.last_report_time + 60):
-        #     stats_payload = {
-        #         'latencies': self.latencies,
-        #         'routes_count': len(self.route_map),
-        #         'notifications_count': self.notifications_count
-        #     }
-        #
-        #     conn = httplib.HTTPConnection(self.stats_server_host, int(self.stats_server_port))
-        #     conn.request('PUT', '/sherlocks/{0}/stats'.format(platform.node()), json.dumps(stats_payload))
-        #     response = conn.getresponse()
-        #
-        #     if response.status == 200:
-        #         del self.latencies[:]
 
         self.updated = True
         self.last_modification_time = time.time()
