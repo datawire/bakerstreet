@@ -230,8 +230,6 @@ class Sherlock(object):
         head, frontends, backends = [], [], []
         for address, (routes, policy) in sorted(self.route_map.items()):
             if len(routes) > 0:
-                head.append("# %s -> (%s) %s" % (address, policy, "; ".join(sorted(routes))))
-
                 # there is always going to be at least one route so grab one and parse the path out of it since that is
                 # our rewrite content
                 route_url = urlparse(routes[0])
