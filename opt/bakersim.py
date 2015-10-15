@@ -80,16 +80,11 @@ class ReplicationController(object):
         self.running_replicas = 0
         self.expected_replicas = 0
 
-    def sync_running_replica_count(self):
-
-        """
-        :return: the actual number of replicas by examining the Running Pods.
-        """
-
+    def query_running_pods(self):
         out = kubectl2("get pods --output=json --selector=name={0}".format(self.name))
         items = json.loads(out)['items']
 
-        result = 0
+        result = []
         for pod in items:
             status = pod.get('status', {})
             expected_containers = len(pod['spec']['containers'])
@@ -98,9 +93,12 @@ class ReplicationController(object):
             conditions = status.get('conditions', [])
             for condition in conditions:
                 if condition['type'] == 'Ready' and condition['status'] and expected_containers == running_containers:
-                    result += 1
+                    result.append(pod)
 
         return result
+
+    def sync_running_replica_count(self):
+        return len(self.query_running_pods())
 
     def sync_replicas_data(self):
         self.expected_replicas = self.sync_expected_replica_count()
@@ -130,6 +128,10 @@ class ReplicationController(object):
     def spawn(self, **kwargs):
         self.sync_replicas_data()
 
+        if 'target_limit' in kwargs and self.running_replicas == kwargs['target_limit']:
+            self.log.debug('Target limit reached (limit: %s)', kwargs['target_limit'])
+            return
+
         count = int(kwargs.get('count', 1))
         if self.running_replicas == self.expected_replicas:
             new_replica_count = self.running_replicas + count
@@ -139,6 +141,19 @@ class ReplicationController(object):
         else:
             self.log.warn('running replicas does not match expected; skipping spawn (expected: %s, running: %s)',
                           self.expected_replicas, self.running_replicas)
+
+    def churn(self, **kwargs):
+        when_running = int(kwargs.get('when_running', 1))
+
+        if self.running_replicas >= when_running:
+            kill_count = self.percent(kwargs.get('percent', 1), self.running_replicas)
+            if kill_count == 0:
+                kill_count = 1
+            for pod in self.select_pods_to_kill(kill_count):
+                out = kubectl2('stop pod {0}'.format(pod['metadata']['name']))
+                self.log.debug("Killed Pod: (out: %s))", out)
+        else:
+            self.log.warn('Not enough running replicas to begin churn (when: %s)', when_running)
 
     def kill(self, **kwargs):
         self.sync_replicas_data()
@@ -151,6 +166,11 @@ class ReplicationController(object):
         self.log.info('removing replicas (current: %s, removing: %s)', 0, count)
         kubectl2('scale rc {0} --replicas={1}'.format(self.name, new_replica_count))
 
+    def select_pods_to_kill(self, count):
+        return self.query_running_pods()[:count]
+
+    def percent(self, percent, whole):
+        return int((percent * whole) / 100)
 
 class Directory(ReplicationController):
 
@@ -219,6 +239,7 @@ class Bakersim(object):
         clients.create()
 
         targets = {'directory': directory, 'servers': servers, 'clients': clients}
+        target_limits = self.profile['target_limits']
 
         self.log.info('running simulation: %s', self.profile_name)
         cycle = 0
@@ -231,6 +252,8 @@ class Bakersim(object):
                 target = targets[task_target]
                 if target:
                     self.log.debug('processing cycle task (type: %s, target: %s)', task_type, task_target)
+                    if task_target in target_limits:
+                        task['target_limit'] = target_limits[task_target]
                     getattr(target, task_type)(**task)
 
             cycle += 1
@@ -429,13 +452,14 @@ def kubectl2(args_and_opts, env=None):
                                                                                           out))
     return out
 
-def kube_down():
-    proc = kube_cmd("kube-down.sh", {'KUBERNETES_PROVIDER': 'aws'})
+def kube_down(kube_config):
+    proc = kube_cmd("kube-down.sh", {'KUBERNETES_PROVIDER': 'aws', 'KUBE_AWS_ZONE': kube_config['cluster_zone']})
     print_process_output(proc)
 
 def kube_up(kube_config):
     env = {
         'KUBERNETES_PROVIDER': 'aws',
+        'KUBE_AWS_ZONE': kube_config['cluster_zone'],
         'MASTER_SIZE': kube_config['master_instance_type'],
 
         'MINION_SIZE': kube_config['node_instance_type'],
@@ -540,7 +564,7 @@ def main(args):
         package_and_build(config, args)
 
     if args['kube-down'] and is_kube_available():
-        kube_down()
+        kube_down(config['kubernetes'])
         exit(0)
 
     if args['kube-up'] and not is_kube_available():

@@ -9,6 +9,7 @@ kubernetes:
   master_instance_type: m4.large
   node_instance_type: m4.large
   node_count: 5
+  cluster_zone: us-east-1c
 
 docker:
   file: docker/bakerscale-dev.dockerfile
@@ -29,8 +30,25 @@ logging:
 
 bakerscale:
   stats_server: 52.91.198.221
-  image: plombardi89/bs4:v3
+  image: plombardi89/bs4:v5
   profiles:
+    small:
+      description: small deployment
+      initial_services: 1
+      initial_clients: 1
+      cycles: -1
+      cycle_quantum: 60
+      target_limits:
+        servers: 5
+        clients: 5
+      tasks:
+        - type: spawn.servers
+          count: 4
+        - type: spawn.clients
+          count: 4
+        - type: churn.servers
+          percent: 1
+          when_running: 5
     max_load:
       description: increase clients until failure
       initial_services: 1
@@ -42,3 +60,6 @@ bakerscale:
           count: 10
         - type: spawn.clients
           count: 10
+        - type: churn.servers
+          percent: 10
+          when_running: 100
