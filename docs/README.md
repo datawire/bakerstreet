@@ -5,7 +5,7 @@ You will need sphinx to build the documentation. You can install it via pip:
 
     pip install sphinx
 
-The documentation looks better with the following pacckage installed,
+The documentation looks better with the following package installed,
 however it is not requried:
 
     pip install sphinx-better-theme
@@ -31,7 +31,7 @@ documentation.
 Example Tags
 ============
 
-You can have put python files in source/examples which can be
+You can put python files in source/examples which can be
 referenced as examples from within the documentation/tutorials.
 
 To make a named tag within an example python file, use a line of the
