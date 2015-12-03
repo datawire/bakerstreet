@@ -58,9 +58,6 @@ class MrsHudsonHandler(BaseHTTPRequestHandler):
 
 
 def run_hudson(args):
-    from pprint import pprint
-    pprint(args)
-
     server = HTTPServer((args['--bind'], int(args['--port'])), MrsHudsonHandler)
     server.serve_forever()
 
