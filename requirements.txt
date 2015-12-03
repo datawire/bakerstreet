@@ -1,4 +1,5 @@
 datawire-quark-core
+datawire-quark-twisted
 docopt
 humanfriendly
 pyyaml
