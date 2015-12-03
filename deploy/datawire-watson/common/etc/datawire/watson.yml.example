@@ -1,0 +1,38 @@
+---
+# file: /etc/datawire/watson.yml.example
+#
+# An example Datawire Watson configuration file.
+
+watson:
+  service:
+    # the name of the service
+    name: foobar-service
+
+    # the url of the service
+    url: http://localhost:5000
+  health_check:
+    # the type of health check (currently only 'http' is supported)
+    type: http
+
+    # the health check method
+    method: GET
+
+    # the url of the health check (can be http or https)
+    url: http://localhost:5000/health
+
+    # the frequency of the health check
+    frequency: 5s
+
+    # HTTP statuses that should be considered healthy.
+    healthy_statuses:
+      - 200
+      - 204
+
+    # timeout period after which a service will be marked as unhealthy
+    timeout: 5s
+
+    # the number of consecutive failed checks before the service is marked as unhealthy.
+    unhealthy_threshold: 1
+
+    # the number of consecutive successful checks before the service is marked as healthy.
+    healthy_threshold: 1
