@@ -4,6 +4,7 @@
 # An example Datawire Watson configuration file.
 
 watson:
+  service_registry: localhost:52689
   service:
     # the name of the service
     name: foobar-service
