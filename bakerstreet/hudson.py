@@ -29,12 +29,20 @@ Options:
 """
 
 import json
+import logging
 import uuid
 
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 
 from docopt import docopt
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+ch.setFormatter(logging.Formatter('--->  %(levelname)s: %(name)s - %(asctime)s - %(message)s'))
+
+logger = logging.getLogger('hudson')
+logger.addHandler(ch)
 
 service_id = uuid.uuid4()
 
@@ -58,6 +66,8 @@ class MrsHudsonHandler(BaseHTTPRequestHandler):
 
 
 def run_hudson(args):
+    logger.setLevel('INFO')
+    logger.info('starting hudson (bind: %s, port: %s)', args['--bind'], int(args['--port']))
     server = HTTPServer((args['--bind'], int(args['--port'])), MrsHudsonHandler)
     server.serve_forever()
 
