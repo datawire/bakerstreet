@@ -1,0 +1,5 @@
+datawire-quark-core
+docopt
+humanfriendly
+pyyaml
+requests
