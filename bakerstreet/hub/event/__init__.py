@@ -27,12 +27,30 @@ class RegistryUpdate(RegistryEvent):
     def _init(self):
         RegistryEvent._init(self)
         self.records = _List([])
+        self.data = None
 
     def __init__(self, type, json):
         super(RegistryUpdate, self).__init__(type);
+        self.data = (json).toString()
 
     def dispatch(self, handler):
         (handler).onRegistryUpdate(self);
+
+
+class RegistrySync(RegistryEvent):
+    """
+    Represents a registry synchronization sent to the client
+    """
+    def _init(self):
+        RegistryEvent._init(self)
+        self.data = None
+
+    def __init__(self, type, json):
+        super(RegistrySync, self).__init__(type);
+        self.data = (json).toString()
+
+    def dispatch(self, handler):
+        (handler).onRegistrySync(self);
 
 
 class RegistryJoin(RegistryEvent):

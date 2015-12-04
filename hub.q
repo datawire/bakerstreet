@@ -215,6 +215,13 @@ package hub {
                 super("heartbeat");
             }
         }
+
+        @doc("A message indicating a client is interested in subscribing to the services registry.")
+        class Subscribe extends RegistryMessage {
+            Subscribe() {
+                super("subscribe");
+            }
+        }
     }
 
     @doc("Events that can be received by Datawire Hub clients.")
@@ -241,13 +248,30 @@ package hub {
         class RegistryUpdate extends RegistryEvent {
 
             List<model.ServiceRecord> records = [];
+            String data;
 
             RegistryUpdate(String type, JSONObject json) {
                 super(type);
+                data = json.toString();
             }
 
             void dispatch(RegistryHandler handler) {
                 handler.onRegistryUpdate(self);
+            }
+        }
+
+        @doc("Represents a registry synchronization sent to the client")
+        class RegistrySync extends RegistryEvent {
+
+            String data;
+
+            RegistrySync(String type, JSONObject json) {
+                super(type);
+                data = json.toString();
+            }
+
+            void dispatch(RegistryHandler handler) {
+                handler.onRegistrySync(self);
             }
         }
 
@@ -343,6 +367,10 @@ package hub {
         event.RegistryEvent buildEvent(String type, JSONObject json) {
             if (type == "join")     { return new event.RegistryJoin(type, json); }
             if (type == "leave")    { return new event.RegistryLeave(type, json); }
+            if (type == "sync") { return new event.RegistrySync(type, json); }
+            if (type == "update")   {
+                print("partial update not supported yet");
+            }
             return new event.RegistryEvent("event");
         }
     }
@@ -355,6 +383,10 @@ package hub {
     interface RegistryHandler {
         void onRegistryEvent(event.RegistryEvent event) {
             // generic do-nothing handler
+        }
+
+        void onRegistrySync(event.RegistrySync sync) {
+            self.onRegistryEvent(sync);
         }
 
         void onRegistryUpdate(event.RegistryUpdate update) {

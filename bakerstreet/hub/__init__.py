@@ -62,6 +62,12 @@ class RegistrySubscription(object):
         if ((type) == (u"leave")):
             return event.RegistryLeave(type, json)
 
+        if ((type) == (u"sync")):
+            return event.RegistrySync(type, json)
+
+        if ((type) == (u"update")):
+            _println(u"partial update not supported yet");
+
         return event.RegistryEvent(u"event")
 
     def onWSInit(self, socket):
@@ -88,6 +94,9 @@ class RegistryHandler(object):
     def onRegistryEvent(self, event):
         pass
 
+    def onRegistrySync(self, sync):
+        (self).onRegistryEvent(sync);
+
     def onRegistryUpdate(self, update):
         (self).onRegistryEvent(update);
 
@@ -108,6 +117,9 @@ class DefaultRegistryHandler(object):
 
     def onRegistryEvent(self, event):
         pass
+
+    def onRegistrySync(self, sync):
+        (self).onRegistryEvent(sync);
 
     def onRegistryUpdate(self, update):
         (self).onRegistryEvent(update);

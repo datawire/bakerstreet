@@ -37,6 +37,7 @@ from abc import abstractmethod
 from docopt import docopt
 from hub.model import *
 from hub import RegistryClient
+from hub.message import Subscribe
 from subprocess import Popen
 from time import time, ctime
 from twisted.internet import reactor
@@ -69,6 +70,7 @@ class HAProxyConfigRewriter(ConfigRewriter):
         self.haproxy_executable = haproxy_config['executable']
         self.haproxy_run_dir = haproxy_config['run_dir']
         self.haproxy_reload_cmd = haproxy_config['reload_command']
+        self.haproxy_config_template_path = haproxy_config['config_template']
         self.haproxy_config_path = os.path.join(self.haproxy_run_dir, 'haproxy.conf')
         self.haproxy_pid_path = haproxy_config['pid_path']
 
@@ -83,15 +85,17 @@ class HAProxyConfigRewriter(ConfigRewriter):
         return "    reqrep ^([^\ :]*)\ /{}(.*) \\1\ {}\\2".format(name, path if path else "/")
 
     @staticmethod
-    def server_line(name, endpoint):
-        name = "{}_{}".format(None, None)
-        return "    server {} {}:{} maxconn 32".format(name, endpoint.host, endpoint.port)
+    def server_line(endpoint):
+        name = "{}_{}".format(endpoint['address']['host'], endpoint['port']['port'])
+        return "    server {} {}:{} maxconn 32".format(name, endpoint['address']['host'], endpoint['port']['port'])
+
+    def read_template(self):
+        with open(self.haproxy_config_template_path, 'r') as template:
+            return template.read()
 
     def render(self, services):
-        result = ""
-
         frontends, backends = [], []
-        for name, endpoints in services:
+        for name, endpoints in services.iteritems():
             if endpoints:
                 backend = "BE_" + name
                 acl_name = "IS_" + name
@@ -104,15 +108,20 @@ class HAProxyConfigRewriter(ConfigRewriter):
                 backends.append("\n backend {}".format(backend))
 
                 # Rewrites the incoming URL so that the service name is removed and replaced with the service path.
-                backends.append(HAProxyConfigRewriter.reqrep_line(name, None))
+                path = None  # todo: rethink
+                backends.append(HAProxyConfigRewriter.reqrep_line(name, path))
 
                 for endpoint in endpoints:
-                    backends.append(HAProxyConfigRewriter.server_line(name, endpoint))
+                    # todo(HAProxy is only good for HTTP+TCP routing)... this needs to be pluggable somehow for others
+                    if endpoint['port']['name'] == 'http':
+                        backends.append(HAProxyConfigRewriter.server_line(endpoint))
 
             else:
                 self.logger.warn("Received service without any routes (service: %s)", name)
 
-        result = "\n".join(frontends + backends)
+        result = self.read_template()
+        result += "\n".join(frontends + backends)
+
         return result, self.rendered_checksum(result)
 
     def write(self, services):
@@ -143,7 +152,6 @@ class HAProxyConfigRewriter(ConfigRewriter):
         else:
             self.logger.debug("No HAProxy config changes detected (checksum: {})", checksum)
 
-        pass
 
 class Sherlock(RegistryClient):
 
@@ -156,11 +164,18 @@ class Sherlock(RegistryClient):
         self.update_received = False
         self.update_received_time = None
 
-    def onRegistryUpdate(self, message):
-        update = json.load(str(message))
+    def onRegistryEvent(self, event):
+        pass
+
+    def onRegistryJoin(self, join):
+        self.send(Subscribe().toJSON().toString())
+
+    def onRegistrySync(self, message):
+        update = json.loads(message.data).get('services', {})
 
         self.update_received = self.services != update
         if self.update_received:
+            self.services = update
             self.update_received_time = time()
 
         self.runtime.schedule(self, 3.0)
@@ -172,11 +187,20 @@ class Sherlock(RegistryClient):
             return
 
     def onExecute(self, runtime):
+        from pprint import pprint
+
         if not self.update_received:
             return
 
-        rendered = self.rewriter.render(self.services)
-        self.rewriter.write(rendered)
+        pprint(self.services)
+
+        rendered, checksum = self.rewriter.render(self.services)
+
+        print("Rendering Result ---> CHECKSUM: {}".format(checksum))
+        print(rendered)
+
+        #rendered = self.rewriter.render(self.services)
+        #self.rewriter.write(rendered)
 
 def run_sherlock(args):
     config = load_config(args['--config'])['sherlock']

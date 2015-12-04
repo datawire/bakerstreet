@@ -105,8 +105,8 @@ class Watson(RegistryClient):
 
     """Lightweight, configurable HTTP/TCP service health checking program for use with Datawire Baker Street"""
 
-    def __init__(self, runtime, logger, service_registry, config, health_check):
-        RegistryClient.__init__(self, runtime, "localhost", 1234)
+    def __init__(self, runtime, logger, hub_host, hub_port, config, health_check):
+        RegistryClient.__init__(self, runtime, hub_host, hub_port)
 
         service_config = config['service']
         health_check_config = config['health_check']
@@ -114,8 +114,6 @@ class Watson(RegistryClient):
 
         self.first_run = True
         self.logger = logger
-        self.service_registry_addr = service_registry.split(':')[0]
-        self.service_registry_port = int(service_registry.split(':')[1])
         self.health_check = health_check
         self.health_check_frequency = parse_timespan(health_check_config['frequency'])
         self.service_url = service_config['url']
@@ -157,8 +155,10 @@ def run_watson(args):
     health_check = HTTPHealthCheck(log, config['health_check'])
     runtime = quark_twisted_runtime.get_twisted_runtime()
 
+    hub_host, hub_port = bakerstreet.get_hub_address(config['service_registry'])
+
     log.info('Running Watson... (for: %s)', config['service']['url'])
-    watson = Watson(runtime, log, config['service_registry'], config, health_check)
+    watson = Watson(runtime, log, hub_host, hub_port, config, health_check)
     watson.initialize()
 
     reactor.run()

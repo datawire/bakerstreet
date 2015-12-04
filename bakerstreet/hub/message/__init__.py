@@ -79,3 +79,14 @@ class Heartbeat(RegistryMessage):
     def __init__(self):
         super(Heartbeat, self).__init__(u"heartbeat");
 
+
+class Subscribe(RegistryMessage):
+    """
+    A message indicating a client is interested in subscribing to the services registry.
+    """
+    def _init(self):
+        RegistryMessage._init(self)
+
+    def __init__(self):
+        super(Subscribe, self).__init__(u"subscribe");
+

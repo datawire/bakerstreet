@@ -17,7 +17,7 @@ sherlock:
     run_dir: /opt/datawire/run
 
     # the HAProxy configuration template which can be modified for further HAProxy customization
-    config_template: /opt/datawire/run/haproxy.conf.template
+    config_template: /home/plombardi/workspace/datawire/backplane/bakerstreet/haproxy.dev.conf
 
     # the HAProxy PID file
     pid_path: /opt/datawire/run/haproxy.pid
