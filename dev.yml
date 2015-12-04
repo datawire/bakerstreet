@@ -3,7 +3,28 @@
 #
 # An example Datawire Watson configuration file.
 
+sherlock:
+  service_registry:
+    host: localhost
+    port: 52689
+    #token: <%= ENV['REGISTRY_SECURITY_TOKEN'] %>
+
+  haproxy:
+    executable: /bin/haproxy
+    config_dir: /opt/datawire/bakerstreet/run
+    command:
+
+  debounce: 5
+
 watson:
+
+#  Replacement Syntax for the service_registry: String field
+#
+#  service_registry:
+#    host: localhost
+#    port: 52689
+#    token: <%= ENV['REGISTRY_SECURITY_TOKEN'] %>
+
   service_registry: localhost:52689
   service:
     # the name of the service
@@ -38,6 +59,5 @@ watson:
     # the number of consecutive successful checks before the service is marked as healthy.
     healthy_threshold: 3
   logging:
-
     format: "-->  %(levelname)s: %(name)s - %(asctime)s - %(message)s"
     level: info
