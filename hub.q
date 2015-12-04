@@ -64,8 +64,10 @@ package hub {
           ServicePort port;
 
           ServiceEndpoint(String name, NetworkAddress address, ServicePort port) {
+            self.name = name;
             self.address = address;
             self.port = port;
+            self.path = "/";
           }
 
           String toString() {
@@ -142,17 +144,17 @@ package hub {
             @doc("The message type")
             String type = null;
 
-            @doc("The canonical name of the service this message is about")
-            String service = null;
-
             @doc("The time the message was created")
             long timestamp = now();
+
+            RegistryMessage(String type) {
+              self.type = type;
+            }
 
             JSONObject toJSON() {
                 JSONObject json = new JSONObject();
                 json["id"] = self.id;
                 json["type"] = self.type;
-                json["service"] = self.service;
                 json["time"] = self.timestamp;
                 return json;
             }
@@ -164,11 +166,14 @@ package hub {
             model.ServiceEndpoint endpoint;
 
             AddServiceEndpoint(model.ServiceEndpoint endpoint) {
+                super("add-service");
                 self.endpoint = endpoint;
             }
 
             JSONObject toJSON() {
                 JSONObject json = super.toJSON();
+
+                print(json.toString());
 
                 if (endpoint != null) {
                     json["endpoint"] = endpoint.toJSON();
@@ -186,6 +191,7 @@ package hub {
             model.ServiceEndpoint endpoint;
 
             RemoveServiceEndpoint(model.ServiceEndpoint endpoint) {
+                super("remove-service");
                 self.endpoint = endpoint;
             }
 
@@ -206,7 +212,7 @@ package hub {
         class Heartbeat extends RegistryMessage {
 
             Heartbeat() {
-
+                super("heartbeat");
             }
         }
     }
