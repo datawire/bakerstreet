@@ -137,7 +137,7 @@ class HAProxyConfigRewriter(ConfigRewriter):
 
             command = self.haproxy_executable + " "
             try:
-                command += "-sf {}".format(open(self.haproxy_pid_path).read())
+                command += self.haproxy_reload_cmd.format(self.haproxy_config_path, open(self.haproxy_pid_path).read())
             except IOError as e:
                 self.logger.error("Error reading HAProxy PID file (msg: %s)", e.message)
 
@@ -145,10 +145,9 @@ class HAProxyConfigRewriter(ConfigRewriter):
                 proc = Popen(command.split(), close_fds=True)
                 proc.wait()
 
-                self.logger.info("Launched %s", command)
+                self.logger.info("Succeeded launching (program: %s, pid: %s)", self.haproxy_executable, proc.pid)
             except OSError as exc:
-                self.logger.error("Failed to launch %r", command)
-                self.logger.error(" (%s)", exc)
+                self.logger.error("Failed launching (program: %s)", self.haproxy_executable, proc.pid)
         else:
             self.logger.debug("No HAProxy config changes detected (checksum: {})", checksum)
 
@@ -195,12 +194,7 @@ class Sherlock(RegistryClient):
         pprint(self.services)
 
         rendered, checksum = self.rewriter.render(self.services)
-
-        print("Rendering Result ---> CHECKSUM: {}".format(checksum))
-        print(rendered)
-
-        #rendered = self.rewriter.render(self.services)
-        #self.rewriter.write(rendered)
+        self.rewriter.write(self.services)
 
 def run_sherlock(args):
     config = load_config(args['--config'])['sherlock']
