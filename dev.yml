@@ -4,34 +4,48 @@
 # An example Datawire Watson configuration file.
 
 sherlock:
+
   service_registry:
     host: localhost
     port: 52689
-    #token: <%= ENV['REGISTRY_SECURITY_TOKEN'] %>
 
   haproxy:
-    executable: /bin/haproxy
-    config_dir: /opt/datawire/bakerstreet/run
-    command:
+    # the path to the HAProxy executable
+    executable: /usr/sbin/haproxy
 
-  debounce: 5
+    # directory where HAProxy should store configuration and runtime state
+    run_dir: /opt/datawire/run
+
+    # the HAProxy configuration template which can be modified for further HAProxy customization
+    config_template: /opt/datawire/run/haproxy.conf.template
+
+    # the HAProxy PID file
+    pid_path: /opt/datawire/run/haproxy.pid
+
+    # the command to reload the HAProxy process
+    reload_command: "-sf {PID}"
+
+  # The debounce parameter controls how sensitive you want Sherlock to be about configuration changes. Typically,
+  # Sherlock will need to restart an OS process if configuration changes are made. This can become an all-consuming
+  # operation if the configuration changes are frequent enough. The debounce parameter means the configuration will not
+  # update until at least the specified time below has been reached if frequent changes are occurring.
+  debounce: 5s
 
 watson:
 
-#  Replacement Syntax for the service_registry: String field
-#
-#  service_registry:
-#    host: localhost
-#    port: 52689
-#    token: <%= ENV['REGISTRY_SECURITY_TOKEN'] %>
+  service_registry:
+    host: localhost
+    port: 52689
 
-  service_registry: localhost:52689
   service:
     # the name of the service
     name: foobar-service
 
     # the url of the service
     url: http://localhost:2218
+
+    # the path of the service
+    path: /v1/foobar
   health_check:
     # the type of health check (currently only 'http' is supported)
     type: http

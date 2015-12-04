@@ -12,36 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-    "__title__", "__summary__", "__uri__", "__version__", "__author__", "__email__", "__license__", "__copyright__"
-]
-
-__title__ = "Baker Street"
-__summary__ = "Client-side load balancing for microservices"
-__uri__ = "http://www.bakerstreet.io/"
-
-__version__ = "0.6"
-
-__author__ = "datawire.io"
-__email__ = "hello@datawire.io"
-
-__license__ = "Apache License, Version 2.0"
-__copyright__ = "2015 %s" % __author__
-
 import os
 import re
 import yaml
 
-# import logging
-# import logging.config
-# try:
-#     from logging import NullHandler
-# except ImportError:
-#     class NullHandler(logging.Handler):
-#         def emit(self, record):
-#             pass
-#
-# logging.getLogger(__name__).addHandler(NullHandler())
+DEFAULT_HUB_HOST = 'localhost'
+DEFAULT_HUB_PORT = 52689
+
+def get_hub_address(config):
+    if config:
+        return config.get('host', DEFAULT_HUB_HOST), config.get('port', DEFAULT_HUB_PORT)
+    else:
+        return DEFAULT_HUB_HOST, DEFAULT_HUB_PORT
 
 def load_config(path):
 
