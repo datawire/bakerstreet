@@ -1,5 +1,7 @@
 #Baker Street
 
+[![Build Status](https://travis-ci.org/datawire/bakerstreet.svg?branch=master)](https://travis-ci.org/datawire/bakerstreet)
+
 Baker Street is a service discovery and routing system designed for microservice architectures.
 
 Baker Street simplifies scaling, testing, and upgrading microservices by:
