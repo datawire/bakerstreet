@@ -1,0 +1,14 @@
+---
+sudo: false
+
+language: python
+python:
+  - "2.7"
+
+# Do not attempt to install packages via the OS package manager. Travis runs tests inside a virtualenv and these changes
+# will not be picked up!
+#
+# see: https://docs.travis-ci.com/user/languages/python
+install: pip install -r requirements.txt
+
+script:

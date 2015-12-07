@@ -2,10 +2,12 @@
 *.*~
 *~
 *.class
+.cache
+.eggs
+*.egg-info
 build
 tags
 dist
-bakerstreet.egg-info
 venv
 virtualenv
 
