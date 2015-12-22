@@ -35,6 +35,7 @@ import uuid
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 
+from bakerstreet import _metadata
 from docopt import docopt
 
 ch = logging.StreamHandler()
@@ -71,8 +72,9 @@ def run_hudson(args):
     server = HTTPServer((args['--bind'], int(args['--port'])), MrsHudsonHandler)
     server.serve_forever()
 
-def main():
-    exit(run_hudson(docopt(__doc__, version="hudson {0}".format("dev"))))
+def main(args):
+    exit(run_hudson(docopt(__doc__, argv=args[1:], version="hudson {0}".format(_metadata.__version__))))
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv)
