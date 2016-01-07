@@ -64,7 +64,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Baker'
-copyright = u'2015 datawire.io'
+copyright = u'2015,2016 Datawire'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
