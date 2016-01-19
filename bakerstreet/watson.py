@@ -32,15 +32,16 @@ import requests
 
 from docopt import docopt
 from humanfriendly import parse_timespan
-from hub.message import AddServiceEndpoint
 from hub.model import *
-from hub import RegistryClient
+from hub.client import *
+from hub.message import *
 from requests.exceptions import ConnectionError
 from twisted.internet import reactor
 from urlparse import urlparse
 
 
 logging.getLogger("requests").setLevel(logging.WARNING)
+
 
 class BaseHealthCheck(HealthCheck):
 
@@ -76,6 +77,7 @@ class BaseHealthCheck(HealthCheck):
     def run_check(self):
         return True
 
+
 class HTTPHealthCheck(BaseHealthCheck):
 
     """A HTTP health check"""
@@ -101,12 +103,13 @@ class HTTPHealthCheck(BaseHealthCheck):
         else:
             raise ValueError('Invalid HTTP method for health check (method: {})'.format(method))
 
-class Watson(RegistryClient):
+
+class Watson(HubClient):
 
     """Lightweight, configurable HTTP/TCP service health checking program for use with Datawire Baker Street"""
 
-    def __init__(self, runtime, logger, hub_host, hub_port, config, health_check):
-        RegistryClient.__init__(self, runtime, hub_host, hub_port)
+    def __init__(self, runtime, logger, config, gateway_options, health_check):
+        HubClient.__init__(self, runtime, gateway_options)
 
         service_config = config['service']
         health_check_config = config['health_check']
@@ -119,32 +122,43 @@ class Watson(RegistryClient):
         self.service_url = service_config['url']
         self.service_name = service_config['name']
 
-    def initialize(self):
-        self.onExecute(self.runtime)
+    def run(self):
+        self.scheduleNow()
 
-    def onRegistryJoin(self, join):
-        self.send(AddServiceEndpoint(self.endpoint).toJSON().toString())
+    def onConnected(self, connect):
+        msg = AddService(self.endpoint)
+        self.sendMessage(msg)
+
+    def onDisconnected(self, disconnected):
+        # todo(plombardi): disconnecting right now means round trip to the gateway to get another hub.
+        self.connect()
 
     def onExecute(self, runtime):
+        # todo(plombardi): need some smarter logic around the initial health checking when thresholds != 0
+
         if self.health_check.check():
             if not self.isConnected():
-                print("DEAD -> LIVE")
-                self.subscribe(self)
+                print("DEAD  -> LIVE")
+                self.connect()
+            else:
+                print("LIVE")
+                self.sendMessage(Heartbeat())
         else:
             if self.isConnected():
+                # todo(plombardi): we likely do not want to actually disconnect the client because disconnect
                 self.disconnect()
-                print("LIVE -> DEAD")
+                print("LIVE  -> DEAD")
             elif self.first_run:
                 print("START -> DEAD")
                 self.first_run = False
 
         self.runtime.schedule(self, self.health_check_frequency)
 
+
 def build_endpoint(service_config):
     url = urlparse(service_config['url'])
-    port = ServicePort(str(url.scheme), url.port)
-    addr = NetworkAddress(url.hostname, 'ipv4')
-    return ServiceEndpoint(service_config['name'], addr, port)
+    return ServiceEndpoint(service_config['name'], str(url.scheme), url.hostname, url.port, service_config['path'])
+
 
 def run_watson(args):
     config = bakerstreet.load_config(args['--config'])['watson']
@@ -153,19 +167,19 @@ def run_watson(args):
     log = logging.getLogger('watson')
 
     health_check = HTTPHealthCheck(log, config['health_check'])
-    runtime = quark_twisted_runtime.get_twisted_runtime()
+    runtime = quark_twisted_runtime.get_runtime()
 
-    hub_host, hub_port = bakerstreet.get_hub_address(config['service_registry'])
+    gateway_options = bakerstreet.get_gateway_options(config['hub_gateway'])
 
-    log.info('Running Watson... (for: %s)', config['service']['url'])
-    watson = Watson(runtime, log, hub_host, hub_port, config, health_check)
-    watson.initialize()
-
+    log.info('Running Watson... (monitoring: %s)', config['service']['url'])
+    watson = Watson(runtime, log, config, gateway_options, health_check)
+    watson.run()
     reactor.run()
+
 
 def main():
     exit(run_watson(docopt(__doc__, version="watson {0}".format("dev"))))
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     main()

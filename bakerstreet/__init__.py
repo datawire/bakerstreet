@@ -16,14 +16,19 @@ import os
 import re
 import yaml
 
-DEFAULT_HUB_HOST = 'localhost'
-DEFAULT_HUB_PORT = 52689
+from hub.client import GatewayOptions
 
-def get_hub_address(config):
-    if config:
-        return config.get('host', DEFAULT_HUB_HOST), config.get('port', DEFAULT_HUB_PORT)
-    else:
-        return DEFAULT_HUB_HOST, DEFAULT_HUB_PORT
+
+def get_gateway_options(config):
+    config = config if config is not None else {}
+
+    options = GatewayOptions(config.get('token'))
+    options.gatewayHost = config.get('host', 'hub-gw.datawire.io')
+    options.gatewayPort = int(config.get('port', 443))
+    options.secure = bool(config.get('secure', True))
+
+    return options
+
 
 def load_config(path):
 

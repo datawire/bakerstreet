@@ -1,449 +1,447 @@
+/*
+ * Copyright 2015, 2016 Datawire. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use self file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * The official Datawire Connect implementation for Datawire Hub.
+ */
+
 @version("1.0.0")
 package hub {
 
-    @doc("Datawire Hub Non-event/non-message domain model objects.")
-    package model {
-        @doc("Interface for health checks")
-        interface HealthCheck {
-            bool check();
-        }
-
-        @doc("Represents the IP or DNS name associated with a service endpoint")
-        class NetworkAddress extends ToJSON {
-
-          String host;
-          String type;
-
-          NetworkAddress(String host, String type) {
-            self.host = host;
-            self.type = type;
-          }
-
-          JSONObject toJSON() {
-            JSONObject json = new JSONObject();
-            json["host"] = host;
-            json["type"] = type;
-            return json;
-          }
-
-          String toString() {
-            return host;
-          }
-        }
-
-        @doc("Represents the port associated with a service endpoint and the protocol it handles")
-        class ServicePort extends ToJSON {
-
-          String name;
-          int port;
-
-          ServicePort(String name, int port) {
-            self.name = name;
-            self.port = port;
-          }
-
-          String toString() {
-            return name + "-" + port.toString();
-          }
-
-          JSONObject toJSON() {
-            JSONObject json = new JSONObject();
-            json["name"] = name;
-            json["port"] = port;
-            json["secure"] = false;
-            return json;
-          }
-        }
-
-        @doc("Represents the combination of network address and service port.")
-        class ServiceEndpoint extends ToJSON {
-
-          String name;
-          String path = null;
-          NetworkAddress address;
-          ServicePort port;
-
-          ServiceEndpoint(String name, NetworkAddress address, ServicePort port) {
-            self.name = name;
-            self.address = address;
-            self.port = port;
-            self.path = "/";
-          }
-
-          String toString() {
-            return port.name + "://" + address.host + ":" + port.port.toString();
-          }
-
-          JSONObject toJSON() {
-            JSONObject json = new JSONObject();
-            json["name"] = name;
-            json["address"] = address.toJSON();
-            json["port"] = port.toJSON();
-            json["path"] = path;
-            return json;
-          }
-        }
-
-        @doc("Maps a named service to a set of known endpoints.")
-        class ServiceRecord {
-
-          String name;
-          List<String> endpoints;
-
-          ServiceRecord(String name) {
-            self.name = name;
-            self.endpoints = new List<String>();
-          }
-
-          String toString() {
-            String result  = "";
-
-            String header  = "Record: " + name;
-            String pointer = " --> ";
-
-            result = result + header;
-
-            // build padding for pretty printing
-            String padding = "";
-            int pdx = 0;
-            while(pdx < header.size()) {
-              padding = padding + " ";
-              pdx = pdx + 1;
-            }
-
-            // build the result
-            int edx = 0;
-            while(edx < endpoints.size()) {
-              if (edx != 0) {
-                result = result + padding;
-              }
-
-              result = result + pointer + endpoints[edx] + "\n";
-              edx = edx + 1;
-            }
-
-            return result;
-          }
-
-          JSONObject toJson() {
-            JSONObject json = new JSONObject();
-            return json;
-          }
-        }
-    }
-
-    @doc("Messages that can be sent to the Datawire Hub.")
-    package message {
-
-        @doc("The message type")
-        class RegistryMessage {
-
-            @doc("ID of the message")
-            int id = 0;
-
-            @doc("The message type")
-            String type = null;
-
-            @doc("The time the message was created")
-            long timestamp = now();
-
-            RegistryMessage(String type) {
-              self.type = type;
-            }
-
-            JSONObject toJSON() {
-                JSONObject json = new JSONObject();
-                json["id"] = self.id;
-                json["type"] = self.type;
-                json["time"] = self.timestamp;
-                return json;
-            }
-        }
-
-        @doc("A message indicating a service endpoint should be added. ")
-        class AddServiceEndpoint extends RegistryMessage {
-
-            model.ServiceEndpoint endpoint;
-
-            AddServiceEndpoint(model.ServiceEndpoint endpoint) {
-                super("add-service");
-                self.endpoint = endpoint;
-            }
-
-            JSONObject toJSON() {
-                JSONObject json = super.toJSON();
-
-                print(json.toString());
-
-                if (endpoint != null) {
-                    json["endpoint"] = endpoint.toJSON();
-                } else {
-                    json["endpoint"] = null;
-                }
-
-                return json;
-            }
-        }
-
-        @doc("A message indicate a service endpoint should be removed.")
-        class RemoveServiceEndpoint extends RegistryMessage {
-
-            model.ServiceEndpoint endpoint;
-
-            RemoveServiceEndpoint(model.ServiceEndpoint endpoint) {
-                super("remove-service");
-                self.endpoint = endpoint;
-            }
-
-            JSONObject toJSON() {
-                JSONObject json = super.toJSON();
-
-                if (endpoint != null) {
-                    json["endpoint"] = endpoint.toJSON();
-                } else {
-                    json["endpoint"] = null;
-                }
-
-                return json;
-            }
-        }
-
-        @doc("A message indicating a service is still alive and well.")
-        class Heartbeat extends RegistryMessage {
-
-            Heartbeat() {
-                super("heartbeat");
-            }
-        }
-
-        @doc("A message indicating a client is interested in subscribing to the services registry.")
-        class Subscribe extends RegistryMessage {
-            Subscribe() {
-                super("subscribe");
-            }
-        }
-    }
-
-    @doc("Events that can be received by Datawire Hub clients.")
-    package event {
-        @doc("Base class for all Datawire Hub service registry events.")
-        class RegistryEvent {
-
-            @doc("The event type")
-            String type;
-
-            @doc("The timestamp associated with the event")
-            String timestamp = null;
-
-            RegistryEvent(String type) {
-                self.type = type;
-            }
-
-            void dispatch(RegistryHandler handler) {
-                handler.onRegistryEvent(self);
-            }
-        }
-
-        @doc("Represents an update to the service registry")
-        class RegistryUpdate extends RegistryEvent {
-
-            List<model.ServiceRecord> records = [];
-            String data;
-
-            RegistryUpdate(String type, JSONObject json) {
-                super(type);
-                data = json.toString();
-            }
-
-            void dispatch(RegistryHandler handler) {
-                handler.onRegistryUpdate(self);
-            }
-        }
-
-        @doc("Represents a registry synchronization sent to the client")
-        class RegistrySync extends RegistryEvent {
-
-            String data;
-
-            RegistrySync(String type, JSONObject json) {
-                super(type);
-                data = json.toString();
-            }
-
-            void dispatch(RegistryHandler handler) {
-                handler.onRegistrySync(self);
-            }
-        }
-
-        class RegistryJoin extends RegistryEvent {
-
-            RegistryJoin(String type, JSONObject json) {
-                super(type);
-            }
-
-            void dispatch(RegistryHandler handler) {
-                handler.onRegistryJoin(self);
-            }
-        }
-
-        @doc("Indicates a service endpoint has left or been removed from the registry")
-        class RegistryLeave extends RegistryEvent {
-
-            @doc("The name of the service")
-            String service;
-
-            @doc("The ID of endpoint being removed (format: <scheme>://<network-address>:<port>)")
-            String id;
-
-            RegistryLeave(String type, JSONObject json) {
-                super(type);
-                self.service = json[""];
-                self.id = json[""];
-            }
-
-            void dispatch(RegistryHandler handler) {
-                handler.onRegistryLeave(self);
-            }
-        }
-    }
-
-    @doc("Datawire Hub service registry subscription")
-    class RegistrySubscription extends WSHandler {
-
-        Runtime         runtime;
-        WebSocket       socket = null;
-        RegistryHandler handler = null;
-
-        RegistrySubscription(Runtime runtime, RegistryHandler handler) {
-           self.runtime = runtime;
-           self.handler = handler;
-        }
-
-        void connect(String host, int port) {
-            String address = "ws://" + host + ":" + port.toString() + "/v1/services";
-            self.runtime.open(address, self);
-        }
-
-        void disconnect() {
-            socket.close();
-        }
-
-        void subscribe(String host, int port) {
-            String address = "ws://" + host + ":" + port.toString() + "/v1/services";
-            self.runtime.open(address, self);
-        }
-
-        void unsubscribe() {
-            socket.close();
-        }
-
-        void send(String message) {
-            if (socket != null) {
-                socket.send(message);
-            } else {
-                // todo: error event?
-            }
-        }
-
-        void onWSConnected(WebSocket socket) {
-            self.socket = socket;
-            event.RegistryEvent event = self.buildEvent("join", new JSONObject());
-            event.dispatch(handler);
-        }
-
-        void onWSClosed(WebSocket socket) {
-            self.socket = null;
-            event.RegistryEvent event = self.buildEvent("leave", new JSONObject());
-            event.dispatch(handler);
-        }
-
-        void onWSMessage(WebSocket socket, String message) {
-            JSONObject json = message.parseJSON();
-            String type = json["type"].getString();
-            event.RegistryEvent event = self.buildEvent(type, json);
-            event.dispatch(handler);
-        }
-
-        event.RegistryEvent buildEvent(String type, JSONObject json) {
-            if (type == "join")     { return new event.RegistryJoin(type, json); }
-            if (type == "leave")    { return new event.RegistryLeave(type, json); }
-            if (type == "sync") { return new event.RegistrySync(type, json); }
-            if (type == "update")   {
-                print("partial update not supported yet");
-            }
-            return new event.RegistryEvent("event");
-        }
+  @doc("Contains Hub domain model interfaces and classes.")
+  package model {
+    @doc("Interface for health checks")
+    interface HealthCheck {
+      bool check();
     }
 
     interface ToJSON {
-        JSONObject toJSON();
+      JSONObject toJSON();
     }
 
-    @doc("Handler for Datawire Hub service registry events")
-    interface RegistryHandler {
-        void onRegistryEvent(event.RegistryEvent event) {
-            // generic do-nothing handler
-        }
+    class ServiceEndpoint extends ToJSON {
 
-        void onRegistrySync(event.RegistrySync sync) {
-            self.onRegistryEvent(sync);
-        }
+      String name;
+      String path;
+      String address;
+      int port;
+      String scheme;
 
-        void onRegistryUpdate(event.RegistryUpdate update) {
-            self.onRegistryEvent(update);
-        }
+      ServiceEndpoint(String name, String scheme, String address, int port, String path) {
+        self.name = name;
+        self.scheme = scheme;
+        self.address = address;
+        self.port = port;
+        self.path = path;
+      }
 
-        void onRegistryJoin(event.RegistryJoin connect) {
-            self.onRegistryEvent(connect);
-        }
+      String toString() {
+        return scheme + "://" + address + ":" + port.toString() + path;
+      }
 
-        void onRegistryLeave(event.RegistryLeave leave) {
-            self.onRegistryEvent(leave);
-        }
+      JSONObject toJSON() {
+        JSONObject json = new JSONObject();
+        json["name"] = name;
+        json["scheme"] = scheme;
+        json["address"] = address;
+        json["port"] = port;
+        json["path"] = path;
+        return json;
+      }
+    }
+  }
+
+  package message {
+
+    @doc("The base message type")
+    class HubMessage {
+
+      @doc("ID of the message; Not used currently")
+      int id = 0;
+
+      @doc("The message type")
+      String type = "";
+
+      @doc("The time the message was created")
+      long timestamp = 0;
+
+      HubMessage(String type) {
+        self.type = type;
+        self.timestamp = now();
+      }
+
+      void dispatch(client.HubHandler handler) {
+        handler.onHubMessage(self);
+      }
+
+      JSONObject toJSON() {
+        JSONObject json = new JSONObject();
+        json["type"] = self.type;
+        json["time"] = self.timestamp;
+        return json;
+      }
+
+      String toString() {
+        return "HubMessage(id=" + id.toString() + ", type=" + type + ", timestamp=" + timestamp.toString() + ")";
+      }
     }
 
-    @doc("Default handler implementation for Datawire Hub service registry events")
-    class DefaultRegistryHandler extends RegistryHandler { }
+    @doc("A message indicating a service endpoint should be added. ")
+    class AddService extends HubMessage {
 
-    @doc("Base implementation of a Datawire Hub service registry client")
-    class RegistryClient extends Task {
+      model.ServiceEndpoint endpoint;
 
-        Runtime                 runtime;
-        String                  hubHost;
-        int                     hubPort;
-        RegistrySubscription    connection = null;
+      AddService(model.ServiceEndpoint endpoint) {
+          super("add-service");
+          self.endpoint = endpoint;
+      }
 
-        RegistryClient(Runtime runtime, String hubHost, int hubPort) {
-            self.runtime = runtime;
-            self.hubHost = hubHost;
-            self.hubPort = hubPort;
-        }
+      JSONObject toJSON() {
+          JSONObject json = super.toJSON();
 
-        bool isConnected() {
-            if (connection != null) {
-                return connection.socket != null;
-            }
+          print(json.toString());
 
-            return false;
-        }
+          if (endpoint != null) {
+              json["endpoint"] = endpoint.toJSON();
+          } else {
+              json["endpoint"] = null;
+          }
 
-        void send(String data) {
-            if (connection != null) {
-                connection.send(data);
-            }
-        }
+          return json;
+      }
 
-        void disconnect() {
-            if (connection != null) {
-                connection.unsubscribe();
-            }
-        }
-
-        void subscribe(RegistryHandler handler) {
-            connection = new RegistrySubscription(runtime, handler);
-            connection.subscribe(hubHost, hubPort);
-        }
-
-        void onExecute(Runtime runtime) { }
+      void dispatch(client.HubHandler handler) {
+          handler.onHubMessage(self);
+      }
     }
+
+    @doc("A message indicate a service endpoint should be removed.")
+    class RemoveService extends HubMessage {
+
+      model.ServiceEndpoint endpoint;
+
+      RemoveService(model.ServiceEndpoint endpoint) {
+          super("remove-service");
+          self.endpoint = endpoint;
+      }
+
+      JSONObject toJSON() {
+          JSONObject json = super.toJSON();
+
+          if (endpoint != null) {
+              json["endpoint"] = endpoint.toJSON();
+          } else {
+              json["endpoint"] = null;
+          }
+
+          return json;
+      }
+
+      void dispatch(client.HubHandler handler) {
+          handler.onHubMessage(self);
+      }
+    }
+
+    @doc("A message indicating a client would like the latest state from the server.")
+    class Synchronize extends HubMessage {
+
+      String data;
+
+      Synchronize(JSONObject json) {
+          super("synchronize");
+          data = json.toString();
+      }
+
+      void dispatch(client.HubHandler handler) {
+          handler.onSynchronize(self);
+      }
+    }
+
+    @doc("A message indicating a service is still alive and well.")
+    class Heartbeat extends HubMessage {
+
+      Heartbeat() {
+          super("heartbeat");
+      }
+
+      void dispatch(client.HubHandler handler) {
+          handler.onHeartbeat(self);
+      }
+    }
+
+    @doc("A message indicating a client is interested in subscribing to the services registry.")
+    class Subscribe extends HubMessage {
+      Subscribe() {
+          super("subscribe");
+      }
+
+      void dispatch(client.HubHandler handler) {
+          handler.onSubscribe(self);
+      }
+    }
+
+    @doc("A message indicating the client has connected")
+      class Connected extends HubMessage {
+        Connected() {
+          super("connected");
+        }
+
+        void dispatch(client.HubHandler handler) {
+          handler.onConnected(self);
+        }
+      }
+
+      @doc("A message indicating the client has disconnected")
+      class Disconnected extends HubMessage {
+      Disconnected() {
+        super("disconnected");
+      }
+
+      void dispatch(client.HubHandler handler) {
+        handler.onDisconnected(self);
+      }
+    }
+
+    @doc("A message indicating the server or client experienced an error")
+    class HubError extends HubMessage {
+
+      @doc("A unique authoritative code for the error")
+      int code;
+
+      @doc("A short string that identifies the code. Preference should be given to the code number instead of the name")
+      String  codeName;
+
+      HubError(int code, String codeName) {
+        super("hub-error");
+        self.code = code;
+        self.codeName = codeName;
+      }
+    }
+
+    interface MessageFactory {
+      message.HubMessage build(String type, JSONObject json);
+    }
+
+    class DefaultMessageFactory extends MessageFactory {
+      message.HubMessage build(String type, JSONObject json) {
+        if (type == "connected")    { return new message.Connected(); }
+        if (type == "disconnected") { return new message.Disconnected(); }
+        if (type == "sync")         { return new message.Synchronize(json); }
+
+        return new message.HubMessage(type);
+      }
+    }
+  }
+
+  @doc("Contains Hub client interfaces and classes")
+  package client {
+
+    @doc("Default handler implementation for Datawire Hub messages")
+    class DefaultHubHandler extends HubHandler { }
+
+    @doc("Basic Hub client that must be extended to provide features beyond connecting to the Hub")
+    class HubClient extends HTTPHandler, HubHandler, Task, WSHandler {
+
+      @doc("Datawire Connect Runtime")
+      Runtime runtime;
+
+      @doc("WebSocket connection")
+      WebSocket socket;
+
+      @doc("Hub Gateway Configuration")
+      GatewayOptions gateway;
+
+      @doc("The URL of the Datawire Hub")
+      String hubUrl;
+
+      HubClient(Runtime runtime, GatewayOptions gateway) {
+        self.runtime = runtime;
+        self.gateway = gateway;
+      }
+
+      void connect() {
+        if (socket == null) {
+          HTTPRequest request = new HTTPRequest(gateway.buildUrl());
+          request.setMethod("POST");
+          request.setHeader("Authorization", "Bearer " + gateway.getToken());
+          runtime.request(request, self);
+        }
+      }
+
+      void disconnect() {
+        if (socket != null) {
+          socket.close();
+        }
+      }
+
+      @doc("The task to run")
+      void onExecute(Runtime runtime);
+
+      bool isConnected() {
+        return socket != null;
+      }
+
+      @doc("Schedules the task for execution after the specified period")
+      void schedule(float period) {
+        runtime.schedule(self, period);
+      }
+
+      @doc("Schedules the task for execution immediately")
+      void scheduleNow() {
+        runtime.schedule(self, 0.0);
+      }
+
+      void send(String payload) {
+        if (socket != null && isConnected()) {
+          socket.send(payload);
+        }
+      }
+
+      void sendMessage(message.HubMessage message) {
+        if (message != null) {
+          JSONObject json = message.toJSON();
+          send(json.toString());
+        }
+      }
+
+      void onHTTPResponse(HTTPRequest request, HTTPResponse response) {
+        if (response.getCode() == 200) {
+          JSONObject connectionInfo = response.getBody().parseJSON();
+          hubUrl = connectionInfo["url"];
+          print(hubUrl + "v1/registry?token=" + gateway.getToken());
+          runtime.open(hubUrl + "v1/registry?token=" + gateway.getToken(), self);
+        } else {
+          message.HubError error = new message.HubError(response.getCode(), "http-error");
+          error.dispatch(self);
+        }
+      }
+
+      void onWSError(WebSocket socket) {
+        message.HubMessage msg = self.buildMessageOfType("disconnected", new JSONObject());
+        msg.dispatch(self);
+      }
+
+      void onWSConnected(WebSocket socket) {
+        self.socket = socket;
+        message.HubMessage msg = self.buildMessageOfType("connected", new JSONObject());
+        msg.dispatch(self);
+      }
+
+      void onWSClosed(WebSocket socket) {
+        socket = null;
+        message.HubMessage msg = self.buildMessageOfType("disconnected", new JSONObject());
+        msg.dispatch(self);
+      }
+
+      void onWSMessage(WebSocket socket, String message) {
+        JSONObject json = message.parseJSON();
+        String type = json["type"].getString();
+        message.HubMessage msg = self.buildMessageOfType(type, json);
+        msg.dispatch(self);
+      }
+
+      message.HubMessage buildMessageOfType(String type, JSONObject json) {
+        if (type == "connected")    { return new message.Connected(); }
+        if (type == "disconnected") { return new message.Disconnected(); }
+        if (type == "sync")         { return new message.Synchronize(json); }
+
+        return new message.HubMessage("message");
+      }
+
+      message.HubMessage buildMessage(JSONObject json) {
+        String type = json["type"].getString();
+        return buildMessageOfType(type, json);
+      }
+    }
+
+    @doc("Handler for Datawire Hub messages")
+    interface HubHandler {
+      void onClientError(message.HubError error) {
+        self.onHubMessage(error);
+      }
+
+      void onConnected(message.Connected connect) {
+        self.onHubMessage(connect);
+      }
+
+      void onDisconnected(message.Disconnected disconnected) {
+        self.onHubMessage(disconnected);
+      }
+
+      void onError(message.HubError error) {
+        if (error.code > 999 && error.code < 2000)  { self.onServerError(error); }
+        if (error.code > 1999 && error.code < 3000) { self.onClientError(error); }
+      }
+
+      void onHeartbeat(message.Heartbeat heartbeat) {
+        self.onHubMessage(heartbeat);
+      }
+
+      void onHubMessage(message.HubMessage message) {
+        // generic do-nothing handler
+      }
+
+      void onServerError(message.HubError error) {
+        self.onHubMessage(error);
+      }
+
+      void onSubscribe(message.Subscribe sub) {
+        self.onHubMessage(sub);
+      }
+
+      void onSynchronize(message.Synchronize sync) {
+        self.onHubMessage(sync);
+      }
+    }
+
+    class GatewayOptions {
+      bool    secure = true;
+      bool    authenticate = true;
+
+      String  gatewayHost = "hub-gw.datawire.io";
+      int     gatewayPort = 443;
+      String  gatewayConnectorPath = "/v1/connect";
+
+      String  token = "";
+
+      GatewayOptions(String token) {
+        self.token = token;
+      }
+
+      String getToken() {
+        return token;
+      }
+
+      String buildUrl() {
+        String scheme = "https";
+        int gatewayPort = self.gatewayPort;
+
+        if (secure) {
+          if (gatewayPort == null || gatewayPort < 1 || gatewayPort > 65535) {
+            gatewayPort = 443;
+          }
+        } else {
+          scheme = "http";
+          if (gatewayPort == null || gatewayPort < 1 || gatewayPort > 65535) {
+            gatewayPort = 80;
+          }
+        }
+
+        return scheme + "://" + gatewayHost + ":" + gatewayPort.toString() + gatewayConnectorPath;
+      }
+    }
+  }
 }

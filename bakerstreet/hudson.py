@@ -47,6 +47,7 @@ logger.addHandler(ch)
 
 service_id = uuid.uuid4()
 
+
 class MrsHudsonHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
@@ -72,8 +73,10 @@ def run_hudson(args):
     server = HTTPServer((args['--bind'], int(args['--port'])), MrsHudsonHandler)
     server.serve_forever()
 
+
 def main(args):
     exit(run_hudson(docopt(__doc__, argv=args[1:], version="hudson {0}".format(_metadata.__version__))))
+
 
 if __name__ == "__main__":
     import sys

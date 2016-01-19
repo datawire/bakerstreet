@@ -28,19 +28,18 @@ Options:
 import hashlib
 import json
 import logging
-import os
 import quark_twisted_runtime
+import _metadata
 
-from bakerstreet import load_config
-from bakerstreet import get_hub_address
+from bakerstreet import *
 from abc import abstractmethod
 from docopt import docopt
-from hub.model import *
-from hub import RegistryClient
+from hub.client import *
 from hub.message import Subscribe
 from subprocess import Popen
 from time import time, ctime
 from twisted.internet import reactor
+
 
 class ConfigRewriter(object):
 
@@ -51,15 +50,6 @@ class ConfigRewriter(object):
     @abstractmethod
     def write(self, services):
         pass
-
-
-# class NginxConfigRewriter(ConfigRewriter):
-#
-#     def write(self, services):
-#         pass
-#
-#     def render(self, services):
-#         pass
 
 
 class HAProxyConfigRewriter(ConfigRewriter):
@@ -86,8 +76,8 @@ class HAProxyConfigRewriter(ConfigRewriter):
 
     @staticmethod
     def server_line(endpoint):
-        name = "{}_{}".format(endpoint['address']['host'], endpoint['port']['port'])
-        return "    server {} {}:{} maxconn 32".format(name, endpoint['address']['host'], endpoint['port']['port'])
+        name = "{}_{}".format(endpoint['address'], endpoint['port'])
+        return "    server {} {}:{} maxconn 32".format(name, endpoint['address'], endpoint['port'])
 
     def read_template(self):
         with open(self.haproxy_config_template_path, 'r') as template:
@@ -112,8 +102,7 @@ class HAProxyConfigRewriter(ConfigRewriter):
                 backends.append(HAProxyConfigRewriter.reqrep_line(name, path))
 
                 for endpoint in endpoints:
-                    # todo(HAProxy is only good for HTTP+TCP routing)... this needs to be pluggable somehow for others
-                    if endpoint['port']['name'] == 'http':
+                    if endpoint['scheme'] == 'http':
                         backends.append(HAProxyConfigRewriter.server_line(endpoint))
 
             else:
@@ -130,46 +119,49 @@ class HAProxyConfigRewriter(ConfigRewriter):
         if checksum != self.current_haproxy_config_checksum:
             self.current_haproxy_config_checksum = checksum
 
-            with open(self.haproxy_config_path, "wb") as conf:
+            with open(self.haproxy_config_path, "wb+") as conf:
                 conf.write("# Last update %s\n" % ctime())
                 conf.write(rendered)
                 conf.write("\n")
 
-            command = self.haproxy_executable + " "
-            try:
-                command += self.haproxy_reload_cmd.format(self.haproxy_config_path, open(self.haproxy_pid_path).read())
-            except IOError as e:
-                self.logger.error("Error reading HAProxy PID file (msg: %s)", e.message)
+            if self.haproxy_executable is not None:
+                command = self.haproxy_executable + " "
+                try:
+                    command += self.haproxy_reload_cmd.format(self.haproxy_config_path, open(self.haproxy_pid_path).read())
+                except IOError as e:
+                    self.logger.error("Error reading HAProxy PID file (msg: %s)", e.message)
 
-            try:
-                proc = Popen(command.split(), close_fds=True)
-                proc.wait()
+                try:
+                    proc = Popen(command.split(), close_fds=True)
+                    proc.wait()
 
-                self.logger.info("Succeeded launching (program: %s, pid: %s)", self.haproxy_executable, proc.pid)
-            except OSError as exc:
-                self.logger.error("Failed launching (program: %s)", self.haproxy_executable, proc.pid)
+                    self.logger.info("Succeeded launching (program: %s, pid: %s)", self.haproxy_executable, proc.pid)
+                except OSError as exc:
+                    self.logger.error("Failed launching (program: %s)", self.haproxy_executable, proc.pid)
+            else:
+                self.logger.debug("HAProxy executable is not defined; Skipping reload")
         else:
             self.logger.debug("No HAProxy config changes detected (checksum: {})", checksum)
 
 
-class Sherlock(RegistryClient):
+class Sherlock(HubClient):
 
-    def __init__(self, runtime, hub_host, hub_port, rewriter, config):
-        RegistryClient.__init__(self, runtime, hub_host, hub_port)
+    def __init__(self, runtime, gateway_options, rewriter, config):
+        HubClient.__init__(self, runtime, gateway_options)
         self.runtime = runtime
         self.config = config
         self.rewriter = rewriter
         self.services = {}
+        self.debounce = 10
         self.update_received = False
         self.update_received_time = None
 
-    def onRegistryEvent(self, event):
-        pass
+    def onConnected(self, connect):
+        print("connected!")
+        msg = Subscribe()
+        self.sendMessage(msg)
 
-    def onRegistryJoin(self, join):
-        self.send(Subscribe().toJSON().toString())
-
-    def onRegistrySync(self, message):
+    def onSynchronize(self, message):
         update = json.loads(message.data).get('services', {})
 
         self.update_received = self.services != update
@@ -177,39 +169,46 @@ class Sherlock(RegistryClient):
             self.services = update
             self.update_received_time = time()
 
-        self.runtime.schedule(self, 3.0)
+        self.schedule(3.0)
 
-    def initialize(self):
-        self.subscribe(self)
+    def run(self):
+        self.scheduleNow()
 
         if not self.update_received:
             return
 
     def onExecute(self, runtime):
-        from pprint import pprint
+        if not self.isConnected():
+            self.connect()
+            return
 
         if not self.update_received:
             return
 
-        pprint(self.services)
+        elapsed = time() - self.update_received_time
+        if elapsed < self.debounce:
+            self.runtime.schedule(self, self.debounce)
+            return
 
-        rendered, checksum = self.rewriter.render(self.services)
         self.rewriter.write(self.services)
+
 
 def run_sherlock(args):
     config = load_config(args['--config'])['sherlock']
 
-    runtime = quark_twisted_runtime.get_twisted_runtime()
+    runtime = quark_twisted_runtime.get_runtime()
     rewriter = HAProxyConfigRewriter(config['haproxy'])
 
-    hub_host, hub_port = get_hub_address(config)
+    gateway_options = get_gateway_options(config['hub_gateway'])
 
-    sherlock = Sherlock(runtime, hub_host, hub_port, rewriter, config)
-    sherlock.initialize()
+    sherlock = Sherlock(runtime, gateway_options, rewriter, config)
+    sherlock.run()
     reactor.run()
 
+
 def main():
-    exit(run_sherlock(docopt(__doc__, version="sherlock {0}".format("dev"))))
+    exit(run_sherlock(docopt(__doc__, version="sherlock {0}".format(_metadata.__version__))))
+
 
 if __name__ == "__main__":
     main()
