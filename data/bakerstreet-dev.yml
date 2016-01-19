@@ -1,23 +1,26 @@
 ---
-# file: /etc/datawire/watson.yml.example
+# file: /etc/datawire/bakerstreet-dev.yml
 #
-# An example Datawire Watson configuration file.
+# An example Datawire Baker Street configuration file suitable for development. The token in this file are fake.
 
 sherlock:
 
-  service_registry:
+  hub_gateway:
     host: localhost
-    port: 52689
+    port: 8080
+    token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJkYXRhd2lyZS5pbyIsImlhdCI6MTQ1MzIzNTQyNSwiZXhwIjoxNDg0NzcyMDI1LCJhdWQiOiJkZXZlbG9wZXIiLCJzdWIiOiJwbG9tYmFyZGlAZGF0YXdpcmUuaW8ifQ.9ELFP05Z4-MpzhXoweDB5cyyId-1GwOYp5vtvCd27pU
+    secure: false
 
   haproxy:
     # the path to the HAProxy executable
-    executable: /usr/sbin/haproxy
+    # executable: /usr/sbin/haproxy
+    executable:
 
     # directory where HAProxy should store configuration and runtime state
-    run_dir: /opt/datawire/run
+    run_dir: /home/plombardi/workspace/datawire/backplane/bakerstreet/data
 
     # the HAProxy configuration template which can be modified for further HAProxy customization
-    config_template: /home/plombardi/workspace/datawire/backplane/bakerstreet/haproxy-dev.conf
+    config_template: /home/plombardi/workspace/datawire/backplane/bakerstreet/data/haproxy-dev.conf
 
     # the HAProxy PID file
     pid_path: /opt/datawire/run/haproxy.pid
@@ -33,9 +36,11 @@ sherlock:
 
 watson:
 
-  service_registry:
+  hub_gateway:
     host: localhost
-    port: 52689
+    port: 8080
+    token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJkYXRhd2lyZS5pbyIsImlhdCI6MTQ1MzIzNTQyNSwiZXhwIjoxNDg0NzcyMDI1LCJhdWQiOiJkZXZlbG9wZXIiLCJzdWIiOiJwbG9tYmFyZGlAZGF0YXdpcmUuaW8ifQ.9ELFP05Z4-MpzhXoweDB5cyyId-1GwOYp5vtvCd27pU
+    secure: false
 
   service:
     # the name of the service
@@ -57,7 +62,7 @@ watson:
     url: http://localhost:2218/health
 
     # the frequency of the health check
-    frequency: 1s
+    frequency: 5s
 
     # HTTP statuses that should be considered healthy.
     healthy_statuses:
@@ -68,10 +73,10 @@ watson:
     timeout: 5s
 
     # the number of consecutive failed checks before the service is marked as unhealthy.
-    unhealthy_threshold: 3
+    unhealthy_threshold: 0
 
     # the number of consecutive successful checks before the service is marked as healthy.
-    healthy_threshold: 3
+    healthy_threshold: 0
   logging:
     format: "-->  %(levelname)s: %(name)s - %(asctime)s - %(message)s"
     level: info

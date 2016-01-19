@@ -50,16 +50,19 @@ class BaseHealthCheck(HealthCheck):
     def __init__(self, logger, config):
         HealthCheck.__init__(self)
         self.logger = logger
-        self.consecutive_failure_count = 0
-        self.consecutive_success_count = 0
         self.seconds_until_timeout = parse_timespan(config.get('timeout', '2s'))
         self.check_url = config['url']
-        self.failures_allowed = config['unhealthy_threshold']
-        self.successes_required = config['healthy_threshold']
+        self.failures_allowed = int(config['unhealthy_threshold'])
+        self.successes_required = int(config['healthy_threshold'])
+
+        # set to required values so that when the first check runs on boot then if it is healthy/unhealthy we begin the
+        # count from there and we do not need to wait for the consecutive number of successful checks to pass.
+        self.consecutive_failure_count = self.failures_allowed
+        self.consecutive_success_count = self.successes_required
 
     def check(self):
-        check_result = self.run_check()
-        if check_result:
+        healthy = self.run_check()
+        if healthy:
             self.consecutive_failure_count = 0
 
             if self.consecutive_success_count < self.successes_required:
@@ -125,18 +128,24 @@ class Watson(HubClient):
     def run(self):
         self.scheduleNow()
 
-    def onConnected(self, connect):
+    def register_service(self):
         msg = AddService(self.endpoint)
         self.sendMessage(msg)
+
+    def deregister_service(self):
+        msg = RemoveService(self.endpoint)
+        self.sendMessage(msg)
+
+    def onConnected(self, connect):
+        self.register_service()
 
     def onDisconnected(self, disconnected):
         # todo(plombardi): disconnecting right now means round trip to the gateway to get another hub.
         self.connect()
 
     def onExecute(self, runtime):
-        # todo(plombardi): need some smarter logic around the initial health checking when thresholds != 0
-
-        if self.health_check.check():
+        healthy = self.health_check.check()
+        if healthy:
             if not self.isConnected():
                 print("DEAD  -> LIVE")
                 self.connect()
@@ -145,8 +154,12 @@ class Watson(HubClient):
                 self.sendMessage(Heartbeat())
         else:
             if self.isConnected():
-                # todo(plombardi): we likely do not want to actually disconnect the client because disconnect
-                self.disconnect()
+                # todo(plombardi): DISCONNECT BAD
+                #
+                # This needs to a deregister operation rather than a disconnect because a disconnect implies that the
+                # socket connection has closed and the HubClient should go through the handshaking process again.
+                #
+                self.deregister_service()
                 print("LIVE  -> DEAD")
             elif self.first_run:
                 print("START -> DEAD")
