@@ -46,83 +46,16 @@
       <div class="eleven columns" style="margin-top: 5%">
         <h4>Introduction</h4>
 
-	<p>Baker Street is
-	an <a href="http://www.haproxy.org">HAProxy</a>-based client
-	side load balancer that simplifies scaling, testing, and
-	upgrading microservices by:
+Thanks for checking out Baker Street. In the time since we've released Baker Street, some amazing new technologies have been released. In particular, Lyft has released <a href="http://lyft.github.io/envoy">Envoy</a>, a modern L7 proxy and load balancer. If you're interested in tackling the problems that Baker Street addresses, we've published a few articles about using Envoy as part of the <a href="https://www.datawire.io/guide/">Microservices Architecture Guide</a>:
 
-	<ul>
-	  <li>automatically splitting traffic among all healthy
-	    services sharing the same name in the system</li>
-	  <li>making load balancing more efficient and robust by using
-	    local load balancers</li>
-	  <li>removing problematic instances from the rotation more
-	    quickly by using local health checkers</li>
-	  <li>enabling canary testing for staged testing and
-	    deployment of service upgrades</li>
-	</ul>
+  <ul>
+    <li><a href="https://www.datawire.io/guide/traffic/getting-started-lyft-envoy-microservices-resilience/">Getting started with Lyft Envoy for microservices resilience</a>
+    <li><a href="https://www.datawire.io/guide/traffic/envoy-flask-kubernetes/">Deploying Envoy with a Python Flask webapp and Kubernetes</a>
+    </li>
+  </ul>
 
-	</p>
-
-	<p>Baker Street consists of three components:
-
-	<ul>
-	  <li>Sherlock - an HAProxy-based routing system, with local
-	    instances corresponding to each instance of your application
-	    to determine where connections from that instance should
-	    go</li>
-	  <li>Watson - a health checker with local instances
-	    corresponding to each instance of your application</li>
-	  <li>Datawire Directory - a global service discovery
-	    mechanism that that receives availability information from
-	    each Watson instance and pushes changes in availability to
-	    local Sherlock instances as needed.</li>
-	</ul>
-
-	</p>
-	    
-	
-	<h4>Alternatives</h4>
-
-	<p>Baker Street integrates a simple service discovery
-	  framework (the Datawire Directory) with a client-side proxy
-	  component. Most companies that have deployed microservices
-	  at scale use this type of client-side architecture, instead
-	  of a centralized load balancer.</p>
-
-	<p>If you don't use Baker Street, your choices generally are:
-
-	  <ul>
-	    <li>Use centralized load balancers. This introduces a single
-	      point of failure and requires configuration magic every
-	      time you add/remove a microservice instance.</li>
-	    <li>Write it yourself. Pick
-	      a <a href="http://jasonwilder.com/blog/2014/02/04/service-discovery-in-the-cloud/">service
-	      discovery</a> framework, write some integration code,
-	      and integrate it with HAProxy.
-	    </li>
-	    <li>Use
-	      AirBnb's <a href="http://nerds.airbnb.com/smartstack-service-discovery-cloud/">SmartStack</a>. Design-wise,
-	      SmartStack is virtually identical to Baker Street,
-	      except Baker Street doesn't
-	      use <a href="http://zookeeper.apache.org">Zookeeper</a>
-	      (and it has a simpler install/config experience).</li>
-	  </ul>
-	</p>
-
-	<p>Baker Street doesn't use Zookeeper or the other popular
-	  service discovery frameworks because we wanted a simple,
-	  highly available service, not a strongly consistent
-	  one. (There's nothing wrong with strongly consistent
-	  semantics, except that
-	  it's <a href="https://aphyr.com/posts/316-call-me-maybe-etcd-and-consul">hard</a>,
-	  and for service discovery, you don't need it. When a service
-	  dies, you generally just want to propagate the information,
-	  without waiting for consensus.)</p>
-
-	  </p>
-
-	    <h4>More</h4>
+  
+	    <h4>Historical information</h4>
 
 	     <p>Detailed documentation <a href="docs/index.html">here</a>, or just
 	      jump to the <a href="docs/quickstart.html">install
@@ -134,21 +67,6 @@
 	       <li><a href="https://groups.google.com/forum/#!forum/bakerstreetio">Mailing list</a></li>
 	     </ul>
 
-	     <h4>Running in production</h4>
-
-	     <p>Baker Street is beta software; use in production at
-	     your own risk (but we'll help you if you run into
-	     issues).</p>
-
-	     <p>A major todo for Baker Street is to support multiple
-	     directories; right now, Baker Street supports only a
-	     single directory. This means that if the directory dies,
-	     you are unable to dynamically load balance until the
-	     directory is restored. That being said, it shouldn't be a
-	     catastrophic failure for your service, as your
-	     microservices will continue to be able to communicate
-	     normally.</p>
-	    
       </div>
     </div>
   </div>
