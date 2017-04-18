@@ -1,4 +1,4 @@
-#Baker Street
+# Baker Street
 
 Baker Street is a service discovery and routing system designed for microservice architectures.
 
@@ -15,7 +15,7 @@ Baker Street consists of three components:
 * Watson - a health checker with local instances corresponding to each instance of your application
 * Datawire Directory - a global service discovery mechanism that receives availability information from each Watson instance and pushes changes in availability to local Sherlock instances as needed
 
-##Baker Street System Requirements
+## Baker Street System Requirements
 
 Baker Street works on any flavor of Enterprise Linux 7 or on Ubuntu 14.04 LTS. Since Baker Street must be co-located with your service, your service must also run on one of these platforms if you wish to use it with Baker Street. Baker Street has no other requirements; you are free to use the language, framework, and tools of your choice while integrating with it.
 
@@ -24,19 +24,19 @@ That said, if you wish to test your installation using a simple sample service a
 * JDK 1.8
 * maven 3 or higher
 
-##Installing Baker Street
+## Installing Baker Street
 
 We expect it to take approximately 15 minutes to install a working local development environment with all three components.
 
 Directions for installing Baker Street locally can be found [here](http://bakerstreet.io/docs/quickstart.html#setup).
 
-##Next Steps
+## Next Steps
 
 Additional information about Baker Street's design and architecture can be found [here](http://bakerstreet.io/docs/architecture.html).
 
 Baker Street components all support a variety of options available via configuration files. For example, each component supports a range of logging levels that can be independently toggled within these configuration files. Information on how to configure each component can be found [here](http://bakerstreet.io/docs/reference.html).
 
-##Additional Information
+## Additional Information
 
 For additional information, visit the Baker Street website at [http://www.bakerstreet.io](http://www.bakerstreet.io).
 
